@@ -4,6 +4,6 @@ Repository contains report and related documents.
 
 Team Members: 
 
-Matthew Mendez
-Connor Owen
+Matthew Mendez,   
+Connor Owen,  
 Peter Williams
