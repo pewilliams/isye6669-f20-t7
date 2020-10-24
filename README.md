@@ -1,2 +1,9 @@
-# isye6669-f20-t7
-Team 7 project for ISyE 6669 - Fall 2020
+### Team 7 project for ISyE 6669 - Fall 2020
+
+Repository contains report and related documents. 
+
+Team Members: 
+
+Matthew Mendez
+Connor Owen
+Peter Williams
