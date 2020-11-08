@@ -26,7 +26,7 @@ fontfamily: helvet
 
 # Introduction
 
-*You are in charge of developing an optimization solution for a large online retailer. The retailer sells $K$ types of products. These products are stored in $N$ warehouses spread around the country. Each warehouse has limited stock of products available. These are given in Warehouses.csv. We want to satisfy M customer orders. Each order may consist of varying quantities of different products. For now, you can assume that products are infinitely divisible.* 
+*You are in charge of developing an optimization solution for a large online retailer. The retailer sells $K$ types of products. These products are stored in $N$ warehouses spread around the country. Each warehouse has limited stock of products available. These are given in Warehouses.csv. We want to satisfy $M$ customer orders. Each order may consist of varying quantities of different products. For now, you can assume that products are infinitely divisible.* 
 
 *For instance, all of the following are valid orders:*
 
@@ -53,6 +53,48 @@ fontfamily: helvet
 ## Question 1 (20 pts)
 
 *Formulate a Linear Programming model to solve this problem. Your submission must be typed. Clearly define all variables, parameters, and constraints.*
+
+To begin we list products, warehouses, and orders according to the following notation:  
+
+\begin{flalign}
+k  = 1,...,K \text{ Products,} \\
+j = 1,...,N  \text{ Warehouses, and}  \\
+i = 1,...,M  \text{ Orders}
+\end{flalign}
+
+We then define, 
+
+
+\begin{flalign}
+d_{ik} \in \mathbb{R} \text{ , the demand for product } k \text{ in order } i,  \\
+s_{jk} \in \mathbb{R} \text{ , stock of product } k \text{ in warehouse } j,  \\
+c_{ij}) \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
+w_k \in \mathbb{R},  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} 
+\end{flalign}
+
+Our decision variables are formulated as,  
+
+\begin{flalign}
+x_{ijk} \in \mathbb{R}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
+\delta^{*}_{ik} = \text{ the number of units of product } k \text{ not fulfilled in order } i
+\end{flalign}
+
+and our objective is then to minimize the cost of shipping units to customers: 
+
+\begin{align}
+\min z =  \sum^{M}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij} w_k + M \sum^{M}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}
+\end{align}
+
+subject to, 
+
+\begin{flalign}
+\sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in M, k \in K, \\
+\sum^{M}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
+x_{ijk} \geq 0 \forall i \in M, j \in N, k \in K \\ 
+\delta^{*}_{ik} \geq 0 \forall i \in M, k \in K  
+\end{flalign}
+
+where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced.  
 
 
 ## Question 2 (20 pts)
