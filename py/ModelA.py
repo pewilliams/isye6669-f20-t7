@@ -35,7 +35,7 @@ products = list(product_weights)
 #instantiate model object
 m = gp.Model('Model A')
 
-# DECISION VARIABLES
+## DECISION VARIABLES
 flow = {}
 
 # index is (warehouse, order, product)
@@ -50,9 +50,11 @@ delta_total = m.addVar(lb=0, vtype=GRB.CONTINUOUS)
 # create cost variable for delivery
 cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name='total_cost')
 
+## OBJECTIVE FUNCTION
 #heavily penalize delta total so that orders are as satisfied when possible
 m.setObjective(cost + 10000*delta_total, sense=GRB.MINIMIZE)
 
+## CONSTRAINTS
 # Define cost variable
 m.addConstr(cost == sum(flow[t]*costs[t[0]][t[1]]*product_weights[t[2]] for t in indices))
 
@@ -69,13 +71,28 @@ for w in warehouses:
 
 # define order delta total
 m.addConstr(delta_total == sum(order_delta[t] for t in deltas_indices))
-m.optimize()
 
-for t in indices:
-    if flow[t].X != 0:
-        print(t, flow[t].X)
-print(f'Obj: {m.objVal}')
-print(f'Cost: {cost.X}')
+# Solve model
+m.optimize()
+status_code =   {1:'LOADED', 2:'OPTIMAL', 3:'INFEASIBLE', 4:'INF_OR_UNBD', 5:'UNBOUNDED'}
+status = m.status
+print(f'The optimization status is {status_code[status]}')
+
+# print solution if optimal
+if status == 2:
+    print('Order\t Warehouse\t Product\t Quantity\t')
+    for t in indices:
+        if flow[t].X != 0:
+            print(f'{t[0]}\t {t[1]}\t {t[2]}\t {flow[t].X}')
+    print(f'Obj function value: {m.objVal}')
+    print(f'Total order cost: {cost.X}')
+    print('-------')
+    print(f'Total unfulfilled demand: {delta_total.X}')
+    print(f'Order\t Product\t Unfulfilled Demand')
+    for o in orders:
+        for k in orders_data[o]:
+            if order_delta[(o,k)].X != 0:
+                print(f'{o}\t {k}\t {order_delta[(o,k)].X}')
 
 
 
