@@ -91,7 +91,8 @@ subject to,
 \sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in M, k \in K, \\
 \sum^{M}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
 x_{ijk} \geq 0 \forall i \in M, j \in N, k \in K \\ 
-\delta^{*}_{ik} \geq 0 \forall i \in M, k \in K  
+\delta^{*}_{ik} \geq 0 \forall i \in M, k \in K  \\
+M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}
 \end{flalign}
 
 where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced.  
