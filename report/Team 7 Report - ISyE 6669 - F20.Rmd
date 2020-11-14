@@ -1,7 +1,7 @@
 ---
 title: |
-  | \vspace{1cm} \LARGE{ISyE 6669 Project - Team 7 - Fall 2020}
-author: "Matthew Mendez, Connor Owen &  Peter Williams"
+  | \vspace{2cm} \huge{ISyE 6669 Project - Team 7 - Fall 2020}
+author: "Matthew Mendez, Connor Owen & Peter Williams"
 date: "`r paste0('date: ',Sys.Date())`"
 output:
   pdf_document:
@@ -20,7 +20,7 @@ fontsize: 10pt
 fontfamily: helvet
 ---
 
-\tableofcontents
+<!-- \tableofcontents -->
 
 \newpage
 
@@ -59,7 +59,7 @@ To begin we list products, warehouses, and orders according to the following not
 \begin{flalign}
 k  = 1,...,K \text{ Products,} \\
 j = 1,...,N  \text{ Warehouses, and}  \\
-i = 1,...,M  \text{ Orders}
+i = 1,...,H  \text{ Orders}
 \end{flalign}
 
 We then define, 
@@ -68,7 +68,7 @@ We then define,
 \begin{flalign}
 d_{ik} \in \mathbb{R} \text{ , the demand for product } k \text{ in order } i,  \\
 s_{jk} \in \mathbb{R} \text{ , stock of product } k \text{ in warehouse } j,  \\
-c_{ij}) \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
+c_{ij} \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
 w_k \in \mathbb{R},  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} 
 \end{flalign}
 
@@ -82,35 +82,44 @@ x_{ijk} \in \mathbb{R}, \text{ number of units shipped of product } k \text{ fro
 and our objective is then to minimize the cost of shipping units to customers: 
 
 \begin{align}
-\min z =  \sum^{M}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij} w_k + M \sum^{M}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}
+\min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij} w_k + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}
 \end{align}
 
 subject to, 
 
 \begin{flalign}
 \sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in M, k \in K, \\
-\sum^{M}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
-x_{ijk} \geq 0 \forall i \in M, j \in N, k \in K \\ 
-\delta^{*}_{ik} \geq 0 \forall i \in M, k \in K  \\
+\sum^{H}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
+x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\ 
+\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  \\
 M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}
 \end{flalign}
 
-where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced.  
-
+where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced.  =
 
 ## Question 2 (20 pts)
 
-*Implement your model in Xpress or Gurobi/Python. Your program must read the data from the given files. Hard-coded data will be (severely) penalized. In your submission, this script should be named ModelA.mos or ModelA.py.*  
+*Implement your model in Xpress or Gurobi/Python. Your program must read the data from the given files. Hard-coded data will be (severely) penalized. In your submission, this script should be named ModelA.mos or ModelA.py. Clearly explain your data structures and how different parts of your code correspond to different parts of your formulation. Specifically, explain which parts of the code generate the variables, objective function, and constraints. Your program’s output should clearly show the optimal solution in an easy-to-read way.*   
 
-*Clearly explain your data structures and how different parts of your code correspond to different parts of your formulation. Specifically, explain which parts of the code generate the variables, objective function, and constraints.*  
+We used *Gurobi/Python* to build our model, and our chosen data structures implemented in *ModelA.py* are derived from the imported dataset files. This allows our model to be run for different input files assuming that data input formats remain consistent. The python script relies on the following input data structures:  
 
-*Your program’s output should clearly show the optimal solution in an easy-to-read way.*  
++ The *orders.csv*, a file that is read into our environment as a *DataFrame* type object using the python *pandas* module. We denote this object as *orders_df* in our code. Based on the provided file, this object, in terms of rows and columns, is a $118 \times 3$ tabular object consisting of *Order ID*, *Product ID*, and *Quantity* containing information about demand for each product type. By aggregating the sum of *Quantity* along *Order ID* $(i=1,...,M)$ and *Product ID* $(k=1,...,K)$ we are able to formulate demand corresponding to our model where, $d_{ik} \in \mathbb{R} \text{ , the demand for product } k \text{ in order } i$.   
+
++ The *ProductWeight.csv* is read into our environment as a *DataFrame* type object denoted as *product_weight_df* in our code. In terms of rows and columns, *product_weight_df* is a $5 \times 1$ tabular object consisting of *Weight* for each product type. This allows us to implement the weight component of our formulation, that is, the data in this file provides $w_k \in \mathbb{R},  (k = 1,...,K) \text{ the weight of product k in lbs.}$   
+
++ The *Warehouses.csv* is read into our environment as a *DataFrame* type object denoted as *warehouse_df* in our code. In terms of rows and columns, *warehouse_df* is a $40 \times 3$ tabular object consisting of *Warehouse ID*, *Product ID*,  and *Stock*, i.e. the stock of each product in each warehouse. This allows us to implement the stock constraints in our formulation, that is, the data in this file provides $s_{jk} \in \mathbb{R} \text{ , stock of product } k \text{ in warehouse } j$.  
+
++ Lastly in our code, the *DeliveryCost.csv* is read into our environment as a *DataFrame* type object denoted as *costs_df* in our code. In terms of rows and columns, *costs_df* is a $8 \times 46$ tabular object consisting of *Warehouse ID* in the rows, and the associated cost of an *Order ID* in  the columns. To simplify subsequent coding, we re-encode this data into a dictionary object denoted as *costs* which associates the cost of each order shipping from a warehouse. This data supports the formulation of  $c_{ij} \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i$, since each *Order ID* corresponds to a customer.  
+
+With these input data objects, we create indices over which our code iterates over warehouses, orders and products to formulate demand, and stock constraints. However, we must deal with the complexity of not being able to fulfill all orders demanded based on stock levels. We solved for this using *Big M* notation above in our model, penalizing unmet demand, denoted in our model as $\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K$. In our code, to account for this we add variables that account from the flow from a warehouse, or a product for an order. We then add constraints to our model that account for flow exceeding stock levels, and an overall constraint to accomodate total order $\delta$. We set $M=10,000$ in our script implementation to account for the total cost penalty, $M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}$.  
+
+Note that for the purposed of *Gurobi* implementation, all variables in this initial formulation as encoded as *GRB.CONTINUOUS*, or continuous type variables. 
+
+\newpage
 
 ## Question 3 (5 pts)  
 
-*Solve your model. What is the objective function value of your solution? What does it mean in words?*
-
-*What is the optimal solution? Make sure to specify which orders are satisfied from which warehouse and what quantities of different items have been sent. In your write up, summarize your solution in a human readable format, e.g. a table.*  
+*Solve your model. What is the objective function value of your solution? What does it mean in words? What is the optimal solution? Make sure to specify which orders are satisfied from which warehouse and what quantities of different items have been sent. In your write up, summarize your solution in a human readable format, e.g. a table.*  
 
 ##  Question 4 (5 pts)  
 
