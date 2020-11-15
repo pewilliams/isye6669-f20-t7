@@ -92,7 +92,7 @@ nonregional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)
 
 ## OBJECTIVE FUNCTION
 #heavily penalize delta total so that orders are as satisfied when possible
-m.setObjective(cost + tot_fixed_cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
+m.setObjective(cost + tot_fixed_cost + 10000 * tot_unfulfilled_demand, sense=GRB.MINIMIZE)
 
 ## CONSTRAINTS
 # Define cost variable
@@ -132,7 +132,8 @@ for r in regions:
         # make stock out binary active when stock out
         m.addConstr(region_stock[r][k] - regional_flow[(r,k)] >= 1 - region_stock_out[(r,k)])
         # make stock out binary inactive when not stock out (bigM = region_stock[r][k]
-        m.addConstr(region_stock[r][k]*(1-region_stock_out[(r, k)]) >= region_stock[r][k] - regional_flow[(r,k)])
+        # m.addConstr(region_stock[r][k]*(1-region_stock_out[(r, k)]) >= region_stock[r][k] - regional_flow[(r,k)])
+        m.addConstr(region_stock[r][k]*region_stock_out[(r, k)] <= regional_flow[(r,k)])
         # only allow nonregional flow for region/product when stock out is active (bigM = regional_demand[r][k])
         m.addConstr(regional_demand[r][k]*region_stock_out[(r,k)] >= nonregional_flow[(r,k)])
 

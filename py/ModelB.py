@@ -67,7 +67,7 @@ tot_fixed_cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS)
 
 ## OBJECTIVE FUNCTION
 #heavily penalize delta total so that orders are as satisfied when possible
-m.setObjective(cost + tot_fixed_cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
+m.setObjective(cost + tot_fixed_cost + 10000 * tot_unfulfilled_demand, sense=GRB.MINIMIZE)
 
 ## CONSTRAINTS
 # Define cost variable
