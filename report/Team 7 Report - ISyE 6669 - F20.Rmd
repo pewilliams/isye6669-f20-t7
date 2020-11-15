@@ -98,7 +98,7 @@ x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\
 M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}
 \end{flalign}
 
-where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced.  =
+where $(11)$ ensures that all demand must be satisfied or accounted for, $(12)$ ensures that stock levels are not exceeded, and $(13)$ and $(14)$ ensure that non-negativity is enforced. 
 
 ## Question 2 (20 pts)
 
@@ -178,11 +178,33 @@ Note that based on the results from our model, the total unfulfilled order deman
 
 *Notice that all orders in the data require whole quantities of products. In practice, the products are not infinitely divisible. Suppose we were to impose this restriction (you do not have to implement it or change the formulation yet). Would the optimal solution change? If your answer is yes, would the optimal objective value be higher, lower, or stay the same? Why? If your answer is no, why not?*  
 
+We are working on a minimization problem, and it is possible that if we were to impose the restriction of product quantity always taking integer values the optimal objective could be higher or stay the same. Adding any kind of constraint to a linear, or linear integer program would limit our feasible set of solutions relative to feasible solutions possible without this restriction. However if our model comes up with a solution that involves demand quantity that are whole numbers, and also provides a solution output with whole numbers, then imposing this restriction would not change things.  
+
 # Part B (20 pts) 
    
 ## Question 5 (5 pts)  
 
-*Now assume that products are not infinitely divisible and can only be sold in whole quantities. Fur- thermore, sending a package from a warehouse to a customer incurs a fixed cost in addition to the weight-based cost. Fixed costs are given in FixedCosts.csv. How would you change your formulation to reflect the new assumptions? You can either write out the new formulation or specify what you had to add and which parts of the old formulation had to be changed and how. Is your new formulation an LP or IP?* 
+*Now assume that products are not infinitely divisible and can only be sold in whole quantities. Furthermore, sending a package from a warehouse to a customer incurs a fixed cost in addition to the weight-based cost. Fixed costs are given in FixedCosts.csv. How would you change your formulation to reflect the new assumptions? You can either write out the new formulation or specify what you had to add and which parts of the old formulation had to be changed and how. Is your new formulation an LP or IP?*  
+
+The inclusion of a fixed cost component to our model would require the addition of a variable resulting in two cost variables, the previously specified cost,  
+
+\begin{flalign}
+c_{ij} \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i,
+\end{flalign}
+
+and the new fixed cost variable for each warehouse, customer combinations that we would specify as,  
+
+\begin{flalign}
+f_{ij} \in \mathbb{R} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.
+\end{flalign}
+
+As a result of this variable addition we would also need to re-formulate our objective function including this new cost as:    
+
+\begin{align}
+\min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} (c_{ij} + f_{ij}) w_k + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
+\end{align}  
+
+\newpage
   
 ## Question 6 (10 pts)
 
