@@ -204,6 +204,14 @@ As a result of this variable addition we would also need to re-formulate our obj
 \min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} (c_{ij} + f_{ij}) w_k + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
 \end{align}  
 
+This new objective would also be subject to the our key decision variable taking on whole number or integer values as specified below:  
+
+\begin{flalign}
+x_{ijk} \in \mathbb{N}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i.
+\end{flalign}  
+
+and yields a mixed integer program, since only some variables in our problem take on continuous values, and others, such as the number of units shipped, take on only integer values.   
+
 \newpage
   
 ## Question 6 (10 pts)
