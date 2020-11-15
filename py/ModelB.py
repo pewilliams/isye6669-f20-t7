@@ -7,6 +7,7 @@ orders_df = pd.read_csv('../csv/orders.csv')
 product_weight_df = pd.read_csv('../csv/ProductWeight.csv').set_index('Product ID')
 warehouse_df = pd.read_csv('../csv/Warehouses.csv')
 costs_df = pd.read_csv('../csv/DeliveryCost.csv')
+fixed_costs_df = pd.read_csv('../csv/FixedCosts.csv')
 
 #turn dataframes into dictionaries
 
@@ -18,9 +19,13 @@ orders_data = {i: {j: group.at[(i,j), 'Quantity'] for j in group.index.get_level
 # {product ID: weight}
 product_weights = {p: product_weight_df.at[p, 'Weight'] for p in product_weight_df.index}
 
-# {warehouse ID: {order ID: cost}}
+# {warehouse ID: {order ID: unit cost}}
 costs = costs_df.set_index('Warehouse ID/OrderID').stack()
 costs = {i: {int(j[1]): group.at[j] for j in group.index} for i, group in costs.groupby(level=0)}
+
+# {warehouse ID: {order ID: fixed cost}
+fixed_costs = fixed_costs_df.set_index('Warehouse ID/Order ID').stack()
+fixed_costs = {i: {int(j[1]): group.at[j] for j in group.index} for i, group in fixed_costs.groupby(level=0)}
 
 # {warehouse ID: {product ID: stock}}
 warehouse_df = warehouse_df.set_index(['Warehouse ID', 'Product ID'])
@@ -40,7 +45,12 @@ flow = {}
 
 # index is (warehouse, order, product)
 indices = [(i, j, k) for i in warehouses for j in orders for k in products if k in orders_data[j]]
-flow = m.addVars(indices, lb=0, vtype=GRB.CONTINUOUS)
+flow = m.addVars(indices, lb=0, vtype=GRB.INTEGER)
+
+#binary variable for incurring fixed cost
+fixed_cost_ind = m.addVars([(w,o) for w in warehouses for o in orders], vtype=GRB.BINARY)
+# use max stock as big M to activate fixed costs ind
+max_stock = max(warehouse_stock[w][k] for w in warehouses for k in products)
 
 # create delta variables for orders that cannot be satisfied and leftover supply
 order_delta_indices = [(o, k) for o in orders for k in products if k in orders_data[o]]
@@ -52,14 +62,24 @@ tot_leftover_supply = m.addVar(lb=0, vtype=GRB.CONTINUOUS)
 
 # create cost variable for delivery
 cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name='total_cost')
+#total fixed cost variable
+tot_fixed_cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS)
 
 ## OBJECTIVE FUNCTION
 #heavily penalize delta total so that orders are as satisfied when possible
-m.setObjective(cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
+m.setObjective(cost + tot_fixed_cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
 
 ## CONSTRAINTS
 # Define cost variable
 m.addConstr(cost == sum(flow[t]*costs[t[0]][t[1]]*product_weights[t[2]] for t in indices))
+
+# Define total fixed cost variable
+m.addConstr(tot_fixed_cost == sum(fixed_cost_ind[(w,k)]*fixed_costs[w][k] for w in warehouses for k in orders))
+
+#activate fixed costs variable if warehouse is part of order
+for w in warehouses:
+    for o in orders:
+        m.addConstr(fixed_cost_ind[(w,o)] >= sum(flow[(w, o, k)] for k in products if k in orders_data[o])/max_stock)
 
 # meet demand
 for o in orders:
@@ -81,15 +101,19 @@ m.optimize()
 status_code =   {1:'LOADED', 2:'OPTIMAL', 3:'INFEASIBLE', 4:'INF_OR_UNBD', 5:'UNBOUNDED'}
 status = m.status
 print(f'The optimization status is {status_code[status]}')
+print('-------')
 
 # print solution if optimal
 if status == 2:
-    print('Order\t Warehouse\t Product\t Quantity\t')
+    print(f'Obj function value: {m.objVal}')
+    print(f'Total order cost: {cost.X + tot_fixed_cost.X}')
+    print(f'Total fixed cost: {tot_fixed_cost.X}')
+    print(f'Total unit costs: {cost.X}')
+    print('-------')
+    print('Warehouse\t Order\t Product\t Quantity\t Unit_Costs\t')
     for t in indices:
         if flow[t].X != 0:
-            print(f'{t[0]}\t {t[1]}\t {t[2]}\t {flow[t].X}')
-    print(f'Obj function value: {m.objVal}')
-    print(f'Total order cost: {cost.X}')
+            print(f'{t[0]}\t {t[1]}\t {t[2]}\t {flow[t].X}\t {flow[t].X*costs[t[0]][t[1]]*product_weights[t[2]]}')
     print('-------')
     print(f'Total unfulfilled demand: {tot_unfulfilled_demand.X} units')
     print(f'Order\t Product\t Unfulfilled Demand')
