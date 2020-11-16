@@ -1,7 +1,7 @@
 ---
 title: |
   | \vspace{2cm} \huge{ISyE 6669 Project - Team 7 - Fall 2020}
-author: "Matthew Mendez, Connor Owen & Peter Williams"
+author: "Connor Owen, Matthew Mendez  & Peter Williams"
 date: "`r paste0('date: ',Sys.Date())`"
 output:
   pdf_document:
@@ -24,7 +24,7 @@ fontsize: 10pt
 fontfamily: helvet
 ---
 
-<!-- \tableofcontents -->
+\tableofcontents
 
 \newpage
 
@@ -69,16 +69,16 @@ i = 1,...,H  \text{ Orders}
 We then define, 
 
 \begin{flalign}
-d_{ik} \in \mathbb{R} \text{ , the demand for product } k \text{ in order } i,  \\
-s_{jk} \in \mathbb{R} \text{ , stock of product } k \text{ in warehouse } j,  \\
-c_{ij} \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
-w_k \in \mathbb{R},  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} 
+d_{ik} \text{ , the demand for product } k \text{ in order } i,  \\
+s_{jk} \text{ , stock of product } k \text{ in warehouse } j,  \\
+c_{ij} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
+w_k,  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} 
 \end{flalign}
 
 Our decision variables are formulated as,  
 
 \begin{flalign}
-x_{ijk} \in \mathbb{R}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
+x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
 \delta^{*}_{ik} = \text{ the number of units of product } k \text{ not fulfilled in order } i
 \end{flalign}
 
@@ -116,7 +116,7 @@ We used *Gurobi/Python* to build our model, and our chosen data structures imple
 
 With these input data objects, we create indices over which our code iterates over warehouses, orders and products to formulate demand, and stock constraints. However, we must deal with the complexity of not being able to fulfill all orders demanded based on stock levels. We solved for this using *Big M* notation above in our model, penalizing unmet demand, denoted in our model as $\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K$. In our code, to account for this we add variables that account from the flow from a warehouse, or a product for an order. We then add constraints to our model that account for flow exceeding stock levels, and an overall constraint to accomodate total order $\delta$. We set $M=10,000$ in our script implementation to account for the total cost penalty, $M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}$.  
 
-Note that for the purposed of *Gurobi* implementation, all variables in this initial formulation as encoded as *GRB.CONTINUOUS*, or continuous type variables. 
+Note that for the purposed of *Gurobi* implementation, all variables in this initial formulation have been encoded as continuous type variables. 
 
 \newpage
 
@@ -170,7 +170,7 @@ Order ID & Product ID &  Quantity Unfulfilled \\
 \end{tabular} 
 \end{table} 
 
-Note that based on the results from our model, the total unfulfilled order demand quantity is $16.0$ products. 
+Note that based on the results from our model, the total unfulfilled order demand quantity is $16$ products. 
 
 \newpage 
 
@@ -178,7 +178,14 @@ Note that based on the results from our model, the total unfulfilled order deman
 
 *Notice that all orders in the data require whole quantities of products. In practice, the products are not infinitely divisible. Suppose we were to impose this restriction (you do not have to implement it or change the formulation yet). Would the optimal solution change? If your answer is yes, would the optimal objective value be higher, lower, or stay the same? Why? If your answer is no, why not?*  
 
-We are working on a minimization problem, and it is possible that if we were to impose the restriction of product quantity always taking integer values the optimal objective could be higher or stay the same. Adding any kind of constraint to a linear, or linear integer program would limit our feasible set of solutions relative to feasible solutions possible without this restriction. However if our model comes up with a solution that involves demand quantity that are whole numbers, and also provides a solution output with whole numbers, then imposing this restriction would not change things.  
+Normally when we are working on a minimization problem imposing the restriction of product quantity always taking integer values, our optimal objective could be higher or stay the same. However, the general formulation of our problem above is in the form of a transportation problem. That is because we have:   
+
++ A supply or stock of product $k$ in warehouse $j$ yielding our supply points,  
++ and have $i$ demand points for each customer order.  
++ We also have a variable cost to ship product $k$ from warehouse $j$ to customer $i$, and our key decision variable is,  
++ $x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i$.  
+
+As a result, imposing this restriction does not change our solution in our problem.   
 
 # Part B (20 pts) 
    
@@ -189,13 +196,13 @@ We are working on a minimization problem, and it is possible that if we were to 
 The inclusion of a fixed cost component to our model would require the addition of a variable resulting in two cost variables, the previously specified cost,  
 
 \begin{flalign}
-c_{ij} \in \mathbb{R} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i,
+c_{ij} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i,
 \end{flalign}
 
 and the new fixed cost variable for each warehouse, customer combinations that we would specify as,  
 
 \begin{flalign}
-f_{ij} \in \mathbb{R} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.
+f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.
 \end{flalign}
 
 As a result of this variable addition we would also need to re-formulate our objective function including this new cost as:    
@@ -207,12 +214,17 @@ As a result of this variable addition we would also need to re-formulate our obj
 This new objective would also be subject to the our key decision variable taking on whole number or integer values as specified below:  
 
 \begin{flalign}
-x_{ijk} \in \mathbb{N}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i.
+x_{ijk} \in \mathbb{N}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i.\
 \end{flalign}  
 
-and yields a mixed integer program, since only some variables in our problem take on continuous values, and others, such as the number of units shipped, take on only integer values.   
+We can also add notation to our demand and stock variables to explicitly specify they take on whole number values (integer) as follows:
 
-\newpage
+\begin{flalign}
+d_{ik} \in \mathbb{N} \text{ , the demand for product } k \text{ in order } i,  \\
+s_{jk} \in \mathbb{N} \text{ , stock of product } k \text{ in warehouse } j,  \\
+\end{flalign}  
+
+As described above, this problem is formulated as a transportation problem, which can be considered here as an integer programming problem (IP).   
   
 ## Question 6 (10 pts)
 
