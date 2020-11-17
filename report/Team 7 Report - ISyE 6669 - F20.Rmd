@@ -24,6 +24,13 @@ fontsize: 10pt
 fontfamily: helvet
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::current_input(dir = TRUE)
+knitr::opts_chunk$set(fig.pos = 'H')
+suppressPackageStartupMessages(require(kableExtra))
+```
+
 \tableofcontents
 
 \newpage
@@ -124,7 +131,7 @@ Note that for the purposed of *Gurobi* implementation, all variables in this ini
 
 *Solve your model. What is the objective function value of your solution? What does it mean in words? What is the optimal solution? Make sure to specify which orders are satisfied from which warehouse and what quantities of different items have been sent. In your write up, summarize your solution in a human readable format, e.g. a table.*  
 
-Based on our implementation in *Gurobi* in *ModelA.py* as described above our realized objective function value for minimization is $z = 165497.8112$ *(rounded)*. However, because we used a *'Big M'* model formulation to account for unfulfilled orders with $M=10,000$ our total order cost is in fact, $165497.812 - 10000 = 5497.8112$
+Based on our implementation in *Gurobi* in *ModelA.py* as described above our realized objective function value for minimization is $z = 165497.8112$ *(rounded)*. However, because we used a *'Big M'* model formulation to account for $16.0$ unfulfilled orders with $M=10,000$ our total order cost is in fact, $165497.8112 - 160000 = 5497.8112$
 
 In terms of our decision variables and output, our model provides two key outputs, the quantity of products planned for fulfillment from each warehouse, for each product *(Table 1)*. It also provides the unfulfilled demand quantity for each product and order *(Table 2)*. 
 
@@ -137,17 +144,17 @@ The following provides a preview of both of these tables with actual results inc
 \hline
 Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
 \hline
-1	&   5 &	 3	& 1.0  \\
-1	& 5	& 5	& 2.0 \\
-1	& 9	& 1	& 4.0  \\
+1 & 3 &	 2	& 2.0  \\
+1	& 4	& 2	& 3.0 \\
 .	& .	& .	& .  \\
 .	& .	& .	& .  \\
-8	& 45	& 2	& 4.0 \\
-8	& 45	& 3	& 1.0 \\
-8	 & 45	& 4	& 1.0 \\
+45	& 8	& 3	& 1.0 \\
+45	 & 8	& 4	& 1.0 \\
 \hline
 \end{tabular} 
 \end{table} 
+
+Note that the full result for part *A* can be found in the appendix for reference.  
 
 Our model output also provides a summary, as mentioned of unfulfilled orders which is provided in total here:   
 
@@ -170,7 +177,7 @@ Order ID & Product ID &  Quantity Unfulfilled \\
 \end{tabular} 
 \end{table} 
 
-Note that based on the results from our model, the total unfulfilled order demand quantity is $16$ products. 
+Note that based on the results from our model, the total unfulfilled order demand quantity is $16.0$ products. 
 
 \newpage 
 
@@ -211,6 +218,8 @@ As a result of this variable addition we would also need to re-formulate our obj
 \min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} (c_{ij} + f_{ij}) w_k + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
 \end{align}  
 
+\newpage 
+
 This new objective would also be subject to the our key decision variable taking on whole number or integer values as specified below:  
 
 \begin{flalign}
@@ -230,11 +239,107 @@ As described above, this problem is formulated as a transportation problem, whic
 
 *Implement the changes to your model in Question 5 in Xpress or Gurobi/Python. In your submission, this script should be named ModelB.mos or ModelB.py. As in Question 2, make sure you explain any new lines of code you have added.*   
 
+In order to solve our problem given changes specified in problem 5, we add some key changes to our code including: 
+
++ Reading in a *DataFrame* object from the *FixedCosts.csv* file provided via the command, *fixed_costs_df = pd.read_csv('../csv/FixedCosts.csv')* that provides a fixed cost for each combination specified of order and warehouse, i.e. $f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.$ This data presents itself in our model as a variable in *Gurobi* as *fixed_cost_ind = m.addVars([(w,o) for w in warehouses for o in orders], vtype=GRB.BINARY)* through flow indices that specifies the cost inclusion (binary) when an order is paired with a warehouse in our decision variable.  
++ Ensuring that our key decision variable, namely, $x_{ijk}$, is constrained to take on integer values only via the *Gurobi* vtype argument, $flow = m.addVars(indices, lb=0, vtype=GRB.INTEGER)$.  
++ Including an indicator for maximum stock for specific product so as to ensure that fixed costs are included for a warehouse in consideration given our order. This is included with the *max_stock = max(warehouse_stock[w][k] for w in warehouses for k in products)* list in our variables. This fixed costs is activated for a warehouse in the order via the following constraint: *m.addConstr(fixed_cost_ind[(w,o)] >= sum(flow[(w, o, k)] for k in products if k in orders_data[o])/max_stock)* in line 82.  
+
+We also enhanced our ModelB.py script to include unit costs in the output for each order, and in addition provide leftover supply for additional insights.  
+
+\newpage  
+
 ## Question 7 (5 pts)  
 
 *Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 3?*  
 
+With the inclusion of fixed costs and new variable type designations our model provide the following solution. In this topline solution we provide the realized value from our objective function, as well as the total order costs, which are the sum of total fixed costs + unit costs. In this case it is work noting that our objective function value can also be understood as the product of *Unfulfilled Demand Quantity* $\times$ $M$ +  *Total Order Cost*:      
+
+\begin{table}[H]
+\centering 
+\caption{Model B: Topline Results (Rounded)}
+\begin{tabular}{lc}  
+\hline
+Model Result & Value  \\   
+\hline
+Objective Function Value & 169,973.95  \\
+Total Order Cost	& 9,973.95	\\
+Total Fixed Cost	& 4,215.00	 \\
+Total Unit Costs & 5,758.95 \\
+Penalty & M = 10,000 \\
+Unfulfilled Demand Quantity & 16 \\
+\hline
+\end{tabular} 
+\end{table} 
+
+It is worth noting that our solution yields the same level of unfulfilled orders, with an order quantity of 16. Our total costs have increased with the inclusion of fixed costs of $4,215.00$, and units costs $5,758.95$ slightly higher than the unit costs in problem 3 $5497.81$. As a result our overall objective function value is higher than in problem 3, with a value of $169,973.95$ vs. the previously achieved $165497.81$
+
 *What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent? In your write up, summarize your solution in a human readable format, e.g. a table.*  
+
+The full output of our newly specified model includes Order ID, Product ID and Warehouse ID quantity assignments in full. Given the size of the table, a preview is provided here. The full table can be found in the appendix:  
+
+\begin{table}[H]
+\centering 
+\caption{Preview Solution, Problem B: Minimizing Order Fulfillment Costs}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+1	&	3	&	2	&	5	\\
+2	&	4	&	3	&	4	\\
+.. & .. & .. & .. \\
+.. & .. & .. & .. \\
+20	&	7	&	3	&	2	\\
+.. & .. & .. & .. \\
+.. & .. & .. & .. \\
+\hline
+\end{tabular} 
+\end{table} 
+
+Based on the full solution output, we can aggregate solution quantity fulfilled across each Warehouse ID to determine total quantity for each location. This data is summarized below, and a list of distinct Order IDs fulfilled from each warehouse is also provided in full:  
+
+\begin{table}[H]
+\centering 
+\caption{Model B: Warehouse Fulfillment}
+\begin{tabular}{llc}  
+\hline
+Warehouse ID & Orders IDs (Partially or Fully Fulfilled) & Total Quantity Fulfilled  \\   
+\hline
+1	& 5,9,31,33,39,44	& 30	\\
+2	& 10,27,28,30,42,43	& 35	\\
+3	& 1,3,4,17,18,35,37 & 33	\\
+4	& 2,7,12,14,16,22,41	& 37	\\
+5	&	13,17,24,32,36,38,44 & 39	\\
+6	&	7,14,17,19,25,34,40,43 &  36	\\
+7	&	8,11,15,20,24,26,41 & 34	\\
+8	&	6,21,22,23,29,33,36,45 & 37	\\
+\hline
+& Total Quantity	&	281	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+The full solution output can also be aggregated across each Product ID to determine total quantity for each product type or item. This data is summarized below with the sum of quantity fulfilled for each product type:    
+
+\begin{table}[H]
+\centering 
+\caption{Model B: Product Fulfillment}
+\begin{tabular}{lc}  
+\hline
+Product ID & Quantity Fulfilled  \\   
+\hline
+1	&	54	\\
+2	&	57	\\
+3	&	62	\\
+4	&	48	\\
+5	&	60	\\
+\hline
+Total Quantity	&	281	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+Note that the total unfulfilled order quantity with associated Product ID is also provided in the appendix for review.  
 
 # Part C (30 pts) 
 
@@ -253,3 +358,347 @@ As described above, this problem is formulated as a transportation problem, whic
 ## Question 10 (5 pts)
 
 *Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 8? What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent? In your write up, summarize your solution in a human readable format, e.g. a table.*  
+
+
+\newpage 
+
+# Appendix
+
+Complete solution, problem A including warehouse, product and order assignments and quantity:  
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem A: Minimizing Order Fulfillment Costs (1/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+1	&	3	&	2	&	2	\\
+1	&	4	&	2	&	3	\\
+2	&	4	&	3	&	4	\\
+2	&	4	&	4	&	1	\\
+3	&	2	&	5	&	2	\\
+3	&	3	&	2	&	3	\\
+3	&	3	&	3	&	2	\\
+4	&	2	&	1	&	1	\\
+4	&	3	&	1	&	1	\\
+4	&	8	&	3	&	2	\\
+5	&	1	&	3	&	1	\\
+5	&	1	&	5	&	2	\\
+6	&	8	&	5	&	3	\\
+7	&	4	&	2	&	2	\\
+7	&	6	&	2	&	3	\\
+8	&	5	&	5	&	1	\\
+8	&	7	&	2	&	1	\\
+9	&	1	&	1	&	4	\\
+9	&	1	&	3	&	1	\\
+9	&	1	&	5	&	2	\\
+10	&	1	&	3	&	3	\\
+10	&	2	&	2	&	1	\\
+10	&	2	&	3	&	5	\\
+10	&	2	&	4	&	1	\\
+11	&	7	&	2	&	4	\\
+12	&	4	&	1	&	3	\\
+12	&	4	&	5	&	3	\\
+13	&	5	&	5	&	4	\\
+14	&	4	&	4	&	2	\\
+14	&	5	&	1	&	2	\\
+14	&	5	&	4	&	2	\\
+14	&	6	&	1	&	1	\\
+15	&	6	&	3	&	1	\\
+15	&	7	&	5	&	3	\\
+16	&	3	&	2	&	1	\\
+16	&	4	&	4	&	4	\\
+17	&	3	&	5	&	5	\\
+17	&	5	&	5	&	1	\\
+17	&	6	&	1	&	1	\\
+17	&	6	&	3	&	4	\\
+17	&	6	&	4	&	3	\\
+18	&	3	&	1	&	3	\\
+18	&	3	&	5	&	1	\\
+19	&	6	&	4	&	3	\\
+20	&	7	&	1	&	1	\\
+20	&	7	&	3	&	1	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\newpage
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem A: Minimizing Order Fulfillment Costs (2/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+21	&	8	&	1	&	2	\\
+21	&	8	&	4	&	1	\\
+22	&	4	&	3	&	5	\\
+22	&	8	&	3	&	1	\\
+23	&	8	&	1	&	4	\\
+23	&	8	&	3	&	1	\\
+23	&	8	&	5	&	4	\\
+24	&	5	&	1	&	2	\\
+24	&	5	&	2	&	2	\\
+24	&	7	&	2	&	3	\\
+25	&	6	&	2	&	2	\\
+25	&	6	&	3	&	3	\\
+25	&	6	&	5	&	2	\\
+26	&	7	&	1	&	3	\\
+26	&	7	&	4	&	5	\\
+26	&	7	&	5	&	3	\\
+27	&	2	&	1	&	2	\\
+27	&	2	&	5	&	2	\\
+27	&	4	&	1	&	2	\\
+27	&	4	&	5	&	1	\\
+28	&	2	&	3	&	5	\\
+29	&	8	&	4	&	4	\\
+29	&	8	&	5	&	1	\\
+30	&	2	&	1	&	3	\\
+30	&	2	&	2	&	4	\\
+31	&	1	&	1	&	1	\\
+32	&	3	&	1	&	2	\\
+32	&	3	&	3	&	2	\\
+32	&	5	&	3	&	1	\\
+33	&	1	&	4	&	6	\\
+33	&	8	&	3	&	3	\\
+34	&	5	&	5	&	1	\\
+34	&	6	&	2	&	3	\\
+34	&	6	&	3	&	1	\\
+34	&	6	&	5	&	3	\\
+35	&	3	&	1	&	3	\\
+36	&	5	&	1	&	5	\\
+36	&	5	&	2	&	4	\\
+36	&	5	&	4	&	4	\\
+37	&	3	&	3	&	2	\\
+37	&	3	&	5	&	4	\\
+38	&	2	&	4	&	4	\\
+38	&	5	&	2	&	4	\\
+38	&	5	&	4	&	1	\\
+39	&	1	&	2	&	3	\\
+39	&	1	&	5	&	3	\\
+40	&	6	&	1	&	3	\\
+40	&	8	&	2	&	2	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\newpage 
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem A: Minimizing Order Fulfillment Costs (3/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+41	&	4	&	1	&	3	\\
+41	&	4	&	3	&	1	\\
+41	&	4	&	5	&	1	\\
+41	&	7	&	1	&	1	\\
+41	&	7	&	3	&	6	\\
+41	&	7	&	5	&	3	\\
+42	&	4	&	4	&	2	\\
+43	&	2	&	4	&	4	\\
+43	&	2	&	5	&	3	\\
+43	&	5	&	3	&	1	\\
+43	&	6	&	2	&	2	\\
+43	&	6	&	3	&	1	\\
+44	&	1	&	2	&	2	\\
+44	&	1	&	5	&	2	\\
+44	&	3	&	2	&	2	\\
+44	&	5	&	3	&	4	\\
+45	&	8	&	1	&	1	\\
+45	&	8	&	2	&	4	\\
+45	&	8	&	3	&	1	\\
+45	&	8	&	4	&	1	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Problem A: Unfulfilled Orders Results (1/1)}
+\begin{tabular}{ccc}  
+\hline
+Order ID & Product ID &  Quantity Unfulfilled \\   
+\hline
+17	& 5	& 1.0 \\
+20	& 1	& 3.0  \\
+20	& 3	& 2.0 \\
+31	& 1	& 2.0 \\
+31	& 3	& 3.0 \\
+31	& 5	& 3.0 \\
+39	& 5	& 1.0 \\
+43	& 5	& 1.0 \\  
+\hline
+\end{tabular} 
+\end{table} 
+
+\newpage 
+
+Complete solution, problem B including warehouse, product and order assignments and quantity based on fixed cost inclusion model:    
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem B: Minimizing Order Fulfillment Costs (1/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+1	&	3	&	2	&	5	\\
+2	&	4	&	3	&	4	\\
+2	&	4	&	4	&	1	\\
+3	&	3	&	2	&	3	\\
+3	&	3	&	3	&	2	\\
+3	&	3	&	5	&	2	\\
+4	&	3	&	1	&	2	\\
+4	&	3	&	3	&	2	\\
+5	&	1	&	3	&	1	\\
+5	&	1	&	5	&	2	\\
+6	&	8	&	5	&	3	\\
+7	&	4	&	2	&	4	\\
+7	&	6	&	2	&	1	\\
+8	&	7	&	2	&	1	\\
+8	&	7	&	5	&	1	\\
+9	&	1	&	1	&	4	\\
+9	&	1	&	3	&	1	\\
+9	&	1	&	5	&	2	\\
+10	&	2	&	2	&	1	\\
+10	&	2	&	3	&	8	\\
+10	&	2	&	4	&	1	\\
+11	&	7	&	2	&	4	\\
+12	&	4	&	1	&	3	\\
+12	&	4	&	5	&	3	\\
+13	&	5	&	5	&	4	\\
+14	&	4	&	1	&	1	\\
+14	&	4	&	4	&	4	\\
+14	&	6	&	1	&	2	\\
+15	&	7	&	3	&	1	\\
+15	&	7	&	5	&	3	\\
+16	&	4	&	2	&	1	\\
+16	&	4	&	4	&	4	\\
+17	&	3	&	1	&	1	\\
+17	&	3	&	5	&	3	\\
+17	&	5	&	5	&	3	\\
+17	&	6	&	3	&	4	\\
+17	&	6	&	4	&	3	\\
+18	&	3	&	1	&	3	\\
+18	&	3	&	5	&	1	\\
+19	&	6	&	4	&	3	\\
+20	&	7	&	1	&	3	\\
+20	&	7	&	3	&	2	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem B: Minimizing Order Fulfillment Costs (2/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+21	&	8	&	1	&	2	\\
+21	&	8	&	4	&	1	\\
+22	&	4	&	3	&	3	\\
+22	&	8	&	3	&	3	\\
+23	&	8	&	1	&	4	\\
+23	&	8	&	3	&	1	\\
+23	&	8	&	5	&	4	\\
+24	&	5	&	1	&	2	\\
+24	&	5	&	2	&	2	\\
+24	&	7	&	2	&	3	\\
+25	&	6	&	2	&	2	\\
+25	&	6	&	3	&	3	\\
+25	&	6	&	5	&	1	\\
+26	&	7	&	1	&	2	\\
+26	&	7	&	4	&	5	\\
+26	&	7	&	5	&	3	\\
+27	&	2	&	1	&	3	\\
+27	&	2	&	5	&	3	\\
+28	&	2	&	3	&	2	\\
+29	&	8	&	4	&	4	\\
+29	&	8	&	5	&	1	\\
+30	&	2	&	1	&	3	\\
+30	&	2	&	2	&	4	\\
+31	&	1	&	1	&	1	\\
+31	&	1	&	3	&	2	\\
+32	&	5	&	1	&	2	\\
+32	&	5	&	3	&	3	\\
+33	&	1	&	4	&	6	\\
+33	&	8	&	3	&	3	\\
+34	&	6	&	2	&	3	\\
+34	&	6	&	3	&	1	\\
+34	&	6	&	5	&	4	\\
+35	&	3	&	1	&	3	\\
+36	&	5	&	1	&	5	\\
+36	&	5	&	2	&	2	\\
+36	&	5	&	4	&	2	\\
+36	&	8	&	2	&	2	\\
+36	&	8	&	4	&	2	\\
+37	&	3	&	3	&	2	\\
+37	&	3	&	5	&	4	\\
+38	&	5	&	2	&	4	\\
+38	&	5	&	4	&	5	\\
+39	&	1	&	2	&	3	\\
+39	&	1	&	5	&	3	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem B: Minimizing Order Fulfillment Costs (2/3)}
+\begin{tabular}{cccc}  
+\hline
+Order ID & Warehouse ID & Product ID &  Quantity Fulfilled \\   
+\hline
+40	&	6	&	1	&	3	\\
+40	&	6	&	2	&	2	\\
+41	&	4	&	1	&	4	\\
+41	&	4	&	3	&	3	\\
+41	&	4	&	5	&	2	\\
+41	&	7	&	3	&	4	\\
+41	&	7	&	5	&	2	\\
+42	&	2	&	4	&	2	\\
+43	&	2	&	4	&	4	\\
+43	&	2	&	5	&	4	\\
+43	&	6	&	2	&	2	\\
+43	&	6	&	3	&	2	\\
+44	&	1	&	2	&	2	\\
+44	&	1	&	3	&	1	\\
+44	&	1	&	5	&	2	\\
+44	&	5	&	2	&	2	\\
+44	&	5	&	3	&	3	\\
+45	&	8	&	1	&	1	\\
+45	&	8	&	2	&	4	\\
+45	&	8	&	3	&	1	\\
+45	&	8	&	4	&	1	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Problem B: Unfulfilled Orders Results (1/1)}
+\begin{tabular}{ccc}  
+\hline
+Order ID & Product ID &  Quantity Unfulfilled \\   
+\hline
+17	& 5	& 1.0 \\
+20	& 1	& 1.0 \\
+20	& 3	& 1.0 \\
+25	& 5	& 1.0 \\
+26	& 1	& 1.0 \\
+27	& 1	& 1.0 \\
+28	& 3	& 3.0 \\
+31	& 1	& 2.0 \\
+31	& 3	& 1.0 \\
+31	& 5	& 3.0 \\
+39	& 5	& 1.0 \\
+\hline
+\end{tabular} 
+\end{table} 
+

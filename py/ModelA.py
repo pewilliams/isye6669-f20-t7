@@ -84,7 +84,7 @@ print(f'The optimization status is {status_code[status]}')
 
 # print solution if optimal
 if status == 2:
-    print('Order\t Warehouse\t Product\t Quantity\t')
+    print('Warehouse\t Order\t Product\t Quantity\t')
     for t in indices:
         if flow[t].X != 0:
             print(f'{t[0]}\t {t[1]}\t {t[2]}\t {flow[t].X}')
