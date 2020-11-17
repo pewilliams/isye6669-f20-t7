@@ -38,7 +38,7 @@ orders = list(orders_data)
 products = list(product_weights)
 
 #instantiate model object
-m = gp.Model('Model A')
+m = gp.Model('Model B')
 
 ## DECISION VARIABLES
 flow = {}
