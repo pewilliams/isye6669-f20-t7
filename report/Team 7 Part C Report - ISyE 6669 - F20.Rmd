@@ -1,0 +1,57 @@
+---
+title: |
+  | \vspace{2cm} \huge{ISyE 6669 Project - Team 7 - Part C - Fall 2020}
+author: "Connor Owen, Matthew Mendez  & Peter Williams"
+date: "`r paste0('date: ',Sys.Date())`"
+output:
+  pdf_document:
+    fig_caption: yes
+    number_sections: no
+  word_document: default
+header-includes:
+- \usepackage{titling}
+- \pretitle{\begin{flushleft}}
+- \posttitle{\end{flushleft}}
+- \preauthor{\begin{flushleft}}
+- \postauthor{\end{flushleft}}
+- \predate{\begin{flushleft}}
+- \postdate{\end{flushleft}}
+- \usepackage{float}
+- \usepackage{caption} 
+- \usepackage{amsmath}
+- \captionsetup[table]{skip=8pt}
+fontsize: 10pt
+fontfamily: helvet
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::current_input(dir = TRUE)
+knitr::opts_chunk$set(fig.pos = 'H')
+suppressPackageStartupMessages(require(kableExtra))
+```
+
+# Part C (30 pts) 
+
+## Question 8 (15 pts)  
+
+*Often businesses have to take into account considerations beyond just the cost. In our case, due to trade regulations, our warehouses and customer orders have been assigned to one of four different regions. These assignments are given in WarehouseRegions.csv and OrderRegions.csv. Orders from one region should be fulfilled by warehouses from the same region until the supplies are depleted. After that, they can be fulfilled from any region.*  
+
+*For instance, suppose Region 1 has only one warehouse, say Warehouse 1. This warehouse holds 5 units of Product 1. Also suppose there is only one order coming from Region 1, say Order 1. Order 1 requires 7 units of Product 1. With the new regional constraints, we have to send 5 units of Product 1 from Warehouse 1 to Order 1. We can satisfy the remaining demand of 2 units form any warehouse. Notice that this constraint takes precedence over any cost considerations, i.e. we have to send 5 units from Warehouse 1 even if it is cheaper to satisfy the order from another warehouse.*  
+
+*Write the model for the updated problem. Explain any additional parameters, variables, and constraints you had to introduce. Your new formulation should include the changes you have made in Question 5. You don’t have to explain these again.*  
+  
+## Question 9 (10 pts)
+
+*Implement your new model in Xpress or Gurobi/Python. In your submission, this script should be named ModelC.mos or ModelC.py. As in Question 2, make sure you explain any new lines of code you have added.*
+
+## Question 10 (5 pts)
+
+*Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 8? What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent? In your write up, summarize your solution in a human readable format, e.g. a table.*  
+
+
+\newpage 
+
+# Appendix
+
+
