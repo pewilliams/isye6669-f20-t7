@@ -117,9 +117,6 @@ for w in warehouses:
         m.addConstr(sum(flow[(w, o, k)] for o in orders if k in orders_data[o]) + supply_delta[(w,k)]
                             == warehouse_stock[w][k])
 
-
-# m.addConstr(sum(flow[t] for t in indices) == sum(regional_flow[i] + nonregional_flow[i] for i in region_indices))
-
 # add regional constraints
 for r in regions:
     for k in products:
