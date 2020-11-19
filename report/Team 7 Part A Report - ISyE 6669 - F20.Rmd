@@ -28,6 +28,7 @@ fontfamily: helvet
 knitr::opts_chunk$set(echo = TRUE)
 knitr::current_input(dir = TRUE)
 knitr::opts_chunk$set(fig.pos = 'H')
+knitr::opts_chunk$set(python.reticulate  = FALSE)
 suppressPackageStartupMessages(require(kableExtra))
 ```
 
@@ -119,7 +120,43 @@ We used *Gurobi/Python* to build our model, and our chosen data structures imple
 
 With these input data objects, we create indices over which our code iterates over warehouses, orders and products to formulate demand, and stock constraints. However, we must deal with the complexity of not being able to fulfill all orders demanded based on stock levels. We solved for this using *Big M* notation above in our model, penalizing unmet demand, denoted in our model as $\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K$. In our code, to account for this we add variables that account from the flow from a warehouse, or a product for an order. We then add constraints to our model that account for flow exceeding stock levels, and an overall constraint to accomodate total order $\delta$. We set $M=10,000$ in our script implementation to account for the total cost penalty, $M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}$.  
 
-Note that for the purposed of *Gurobi* implementation, all variables in this initial formulation have been encoded as continuous type variables. 
+\newpage
+
+Note that for the purposed of *Gurobi* implementation, all variables in this initial formulation have been encoded as continuous type variables. To illustrate how we built models variables into our ModelA.py script Code that generates variables, we rely on lists indexed for each order and supply point, along leftover supply and unfulfilled demand points as follows:  
+
+\begin{verbatim}
+order_delta = m.addVars(order_delta_indices, lb=0, vtype=GRB.CONTINUOUS) 
+supply_delta = m.addVars(supply_delta_indices, lb=0, vtype=GRB.CONTINUOUS)     
+tot_unfulfilled_demand = m.addVar(lb=0, vtype=GRB.CONTINUOUS)  
+tot_leftover_supply = m.addVar(lb=0, vtype=GRB.CONTINUOUS)   
+\end{verbatim}
+
+In order to generates constraints dynamically, we define costs based on weights, and then loop over orders and warehouse to ensure we meet demand and do not exceed stock as the following code block. It also defines our objective penalized by unfulfilled demand:      
+
+\begin{verbatim}
+# add costs   
+m.addConstr(cost == sum(flow[t]*costs[t[0]][t[1]]*product_weights[t[2]] for t in indices))  
+# meet demand  
+for o in orders:
+    for k in orders_data[o]:
+        m.addConstr(sum(flow[(w, o, k)] 
+          for w in warehouses) + order_delta[(o, k)] == orders_data[o][k])
+# don't exceed stock
+for w in warehouses:
+    for k in products:
+        m.addConstr(sum(flow[(w, o, k)] 
+          for o in orders if k in orders_data[o]) + supply_delta[(w,k)]
+                            == warehouse_stock[w][k])
+                            
+# define order delta total
+m.addConstr(tot_unfulfilled_demand == sum(order_delta[t] for t in order_delta_indices))
+# define leftover supply total
+m.addConstr(tot_leftover_supply == sum(supply_delta[t] for t in supply_delta_indices))
+
+# set new objective 
+m.setObjective(cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), 
+  sense=GRB.MINIMIZE)
+\end{verbatim}
 
 \newpage
 
@@ -181,10 +218,10 @@ Note that based on the results from our model, the total unfulfilled order deman
 
 *Notice that all orders in the data require whole quantities of products. In practice, the products are not infinitely divisible. Suppose we were to impose this restriction (you do not have to implement it or change the formulation yet). Would the optimal solution change? If your answer is yes, would the optimal objective value be higher, lower, or stay the same? Why? If your answer is no, why not?*  
 
-Normally when we are working on a minimization problem imposing the restriction of product quantity always taking integer values, our optimal objective could be higher or stay the same. However, the general formulation of our problem above is in the form of a transportation problem. That is because we have:   
+Normally when we are working on a minimization problem imposing the restriction of product quantity always taking integer values, our optimal objective could be higher or stay the same. However, the general formulation of our problem above is similar to the form of a transportation problem. That is because we have:   
 
 + A supply or stock of product $k$ in warehouse $j$ yielding our supply points,  
-+ and have $i$ demand points for each customer order.  
++ and have $i$ demand points for each customer order, and the demand takes on integer values.  
 + We also have a variable cost to ship product $k$ from warehouse $j$ to customer $i$, and our key decision variable is,  
 + $x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i$.  
 

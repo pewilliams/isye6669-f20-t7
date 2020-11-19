@@ -79,8 +79,68 @@ As described above, this problem is formulated as a transportation problem, whic
 In order to solve our problem given changes specified in problem 5, we add some key changes to our code including: 
 
 + Reading in a *DataFrame* object from the *FixedCosts.csv* file provided via the command, *fixed_costs_df = pd.read_csv('../csv/FixedCosts.csv')* that provides a fixed cost for each combination specified of order and warehouse, i.e. $f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.$ This data presents itself in our model as a variable in *Gurobi* as *fixed_cost_ind = m.addVars([(w,o) for w in warehouses for o in orders], vtype=GRB.BINARY)* through flow indices that specifies the cost inclusion (binary) when an order is paired with a warehouse in our decision variable.  
-+ Ensuring that our key decision variable, namely, $x_{ijk}$, is constrained to take on integer values only via the *Gurobi* vtype argument, $flow = m.addVars(indices, lb=0, vtype=GRB.INTEGER)$.  
-+ Including an indicator for maximum stock for specific product so as to ensure that fixed costs are included for a warehouse in consideration given our order. This is included with the *max_stock = max(warehouse_stock[w][k] for w in warehouses for k in products)* list in our variables. This fixed costs is activated for a warehouse in the order via the following constraint: *m.addConstr(fixed_cost_ind[(w,o)] >= sum(flow[(w, o, k)] for k in products if k in orders_data[o])/max_stock)* in line 82.  
++ Ensuring that our key decision variable, namely, $x_{ijk}$, is constrained to take on integer values only via the *Gurobi* vtype argument, $flow = m.addVars(indices, lb=0, vtype=GRB.INTEGER)$. It is also worth noting that the incoming demand is assumed to always take on integer values.  
++ Including an indicator for maximum stock for specific product so as to ensure that fixed costs are included for a warehouse in consideration given our order. This is included with the *max_stock = max(warehouse_stock[w][k] for w in warehouses for k in products)* list in our variables in line 53. This fixed costs is activated for a warehouse in the order via the following constraint: *m.addConstr(fixed_cost_ind[(w,o)] >= sum(flow[(w, o, k)] for k in products if k in orders_data[o])/max_stock)* in line 82.  
+
+To simplify readibility of the code we also added the following
+
+
+ 
+
+
+Code that generates constraints: 
+# Define cost variable
+m.addConstr(cost == sum(flow[t]*costs[t[0]][t[1]]*product_weights[t[2]] for t in indices))
+# meet demand
+for o in orders:
+    for k in orders_data[o]:
+        m.addConstr(sum(flow[(w, o, k)] for w in warehouses) + order_delta[(o, k)] == orders_data[o][k])
+# don't exceed stock
+for w in warehouses:
+    for k in products:
+        m.addConstr(sum(flow[(w, o, k)] for o in orders if k in orders_data[o]) + supply_delta[(w,k)]
+                            == warehouse_stock[w][k])
+# define order delta total
+m.addConstr(tot_unfulfilled_demand == sum(order_delta[t] for t in order_delta_indices))
+# define leftover supply total
+m.addConstr(tot_leftover_supply == sum(supply_delta[t] for t in supply_delta_indices))
+
+Code that generates objective function:
+m.setObjective(cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
+ 
+ 
+
+
+Code that generates variables; 
+order_delta = m.addVars(order_delta_indices, lb=0, vtype=GRB.CONTINUOUS)
+supply_delta = m.addVars(supply_delta_indices, lb=0, vtype=GRB.CONTINUOUS)
+tot_unfulfilled_demand = m.addVar(lb=0, vtype=GRB.CONTINUOUS)
+# this is the extra variable that I mentioned above 
+tot_leftover_supply = m.addVar(lb=0, vtype=GRB.CONTINUOUS) 
+
+ 
+
+
+Code that generates constraints: 
+# Define cost variable
+m.addConstr(cost == sum(flow[t]*costs[t[0]][t[1]]*product_weights[t[2]] for t in indices))
+# meet demand
+for o in orders:
+    for k in orders_data[o]:
+        m.addConstr(sum(flow[(w, o, k)] for w in warehouses) + order_delta[(o, k)] == orders_data[o][k])
+# don't exceed stock
+for w in warehouses:
+    for k in products:
+        m.addConstr(sum(flow[(w, o, k)] for o in orders if k in orders_data[o]) + supply_delta[(w,k)]
+                            == warehouse_stock[w][k])
+# define order delta total
+m.addConstr(tot_unfulfilled_demand == sum(order_delta[t] for t in order_delta_indices))
+# define leftover supply total
+m.addConstr(tot_leftover_supply == sum(supply_delta[t] for t in supply_delta_indices))
+
+Code that generates objective function:
+m.setObjective(cost + 10000 * (tot_unfulfilled_demand+tot_leftover_supply), sense=GRB.MINIMIZE)
+ 
 
 We also enhanced our ModelB.py script to include unit costs in the output for each order, and in addition provide leftover supply for additional insights.  
 
