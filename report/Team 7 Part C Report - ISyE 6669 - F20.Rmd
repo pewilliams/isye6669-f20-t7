@@ -70,7 +70,7 @@ We also create sets that describe which region a warehouse belongs to as well as
 
 \begin{flalign}
 N_{r} \text{ a warehouse belong to region } r \\
-H_r \text{ an order belong to region} r
+H_r \text{ an order belong to region } r
 \end{flalign}
 
 The formulation of the decision variables becomes,  
@@ -78,7 +78,7 @@ The formulation of the decision variables becomes,
 \begin{flalign}
 x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
 \delta^{*}_{ik} = \text{ the number of units of product } k \text{ not fulfilled in order } i \\
-t_{rk} = \text{ is an indication of if there is stock out of product } k \text{ from region } r \\
+t_{rk} \in \{0,1\} \text{ is an indication of if there is stock-out of product } k \text{ from region } r,  1, \text{ if stock-out, 0 o.w}\\
 z_{rk} = \text{ regional flow of product } k \text{ in region } r
 z^{'}_{rk} = \text{ nonregional flow of product } k \text{ in region } r
 \end{flalign}
@@ -89,6 +89,23 @@ The objective is to minimize the cost resulting in the following objective funct
 
 \begin{flalign}
 \min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij}w_k + \sum^{H}_{i=1} \sum^{N}_{j=1} f_{ij} y_{ij} + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
+\end{flalign}  
+
+subject to,  
+
+\begin{flalign}
+\sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in H, k \in K, \\
+\sum^{H}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
+z_{rk} = \sum^{N}_{j=1} \sum^{H}_{i=1} x_{ijk} \forall r \forall k \text{ if warehouse j in region r and order i in r  }\\
+z^{'}_{rk}  = \sum^{N}_{j=1} \sum^{H}_{i=1} x_{ijk} \forall r \forall k \text{ if warehouse j not in region r and order i in r   }\\
+M y_{ij} \geq \sum_k x_{ijk} \forall j \in N, \forall i \in H. 
+\end{flalign}  
+
+\begin{flalign}
+M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}  \\
+x_{ijk}, d_{ik}, s_{jk} \in \mathbb{N}\
+x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\ 
+\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  \\
 \end{flalign}  
 
 
