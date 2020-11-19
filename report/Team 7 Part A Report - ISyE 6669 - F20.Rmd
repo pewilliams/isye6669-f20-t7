@@ -28,7 +28,6 @@ fontfamily: helvet
 knitr::opts_chunk$set(echo = TRUE)
 knitr::current_input(dir = TRUE)
 knitr::opts_chunk$set(fig.pos = 'H')
-knitr::opts_chunk$set(python.reticulate  = FALSE)
 suppressPackageStartupMessages(require(kableExtra))
 ```
 
@@ -95,7 +94,7 @@ and our objective is then to minimize the cost of shipping units to customers:
 subject to, 
 
 \begin{flalign}
-\sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in M, k \in K, \\
+\sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in H, k \in K, \\
 \sum^{H}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
 x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\ 
 \delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  \\

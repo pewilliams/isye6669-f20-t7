@@ -7,6 +7,8 @@ output:
   pdf_document:
     fig_caption: yes
     number_sections: no
+  html_document:
+    df_print: paged
   word_document: default
 header-includes:
 - \usepackage{titling}
@@ -17,7 +19,7 @@ header-includes:
 - \predate{\begin{flushleft}}
 - \postdate{\end{flushleft}}
 - \usepackage{float}
-- \usepackage{caption} 
+- \usepackage{caption}
 - \usepackage{amsmath}
 - \captionsetup[table]{skip=8pt}
 fontsize: 10pt
@@ -46,7 +48,7 @@ c_{ij} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to c
 and the new fixed cost variable for each warehouse, customer combinations that we would specify as,  
 
 \begin{flalign}
-f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.
+f_{ij} \text{ , the fixed cost of sending a product from warehouse } j \text{ to customer } i.
 \end{flalign}
 
 We also need to add a binary indicator variable, to ensure we have a decision variable that accounts for a warehouse being chosen to fulfill and order, namely, 
@@ -76,6 +78,12 @@ d_{ik} \in \mathbb{N} \text{ , the demand for product } k \text{ in order } i,  
 s_{jk} \in \mathbb{N} \text{ , stock of product } k \text{ in warehouse } j,  \\
 \end{flalign}  
 
+We also need to ensure we have properly accounted for all products for each warehouse and order:  
+
+\begin{flalign}
+M y_{ij} \geq \sum_k x_{ijk} \forall j \in N, \forall i \in H. 
+\end{flalign}  
+
 As described above, this problem is formulated like a transportation problem, which can be considered here as an integer programming problem (IP).   
   
 ## Question 6 (10 pts)
@@ -84,7 +92,7 @@ As described above, this problem is formulated like a transportation problem, wh
 
 In order to solve our problem given changes specified in problem 5, we add some key changes to our code including: 
 
-+ Reading in a *DataFrame* object from the *FixedCosts.csv* file provided via the command, *fixed_costs_df = pd.read_csv('../csv/FixedCosts.csv')* that provides a fixed cost for each combination specified of order and warehouse, i.e. $f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i.$ This data presents itself in our model as a variable in *Gurobi* as *fixed_cost_ind = m.addVars([(w,o) for w in warehouses for o in orders], vtype=GRB.BINARY)* through flow indices that specifies the cost inclusion (binary) when an order is paired with a warehouse in our decision variable.  
++ Reading in a *DataFrame* object from the *FixedCosts.csv* file provided via the command, *fixed_costs_df = pd.read_csv('../csv/FixedCosts.csv')* that provides a fixed cost for each combination specified of order and warehouse, i.e. $f_{ij} \text{ , the fixed cost of sending a product from warehouse } j \text{ to customer } i.$ This data presents itself in our model as a variable in *Gurobi* as *fixed_cost_ind = m.addVars([(w,o) for w in warehouses for o in orders], vtype=GRB.BINARY)* through flow indices that specifies the cost inclusion (binary) when an order is paired with a warehouse in our decision variable.  
 + Ensuring that our key decision variable, namely, $x_{ijk}$, is constrained to take on integer values only via the *Gurobi* vtype argument, $flow = m.addVars(indices, lb=0, vtype=GRB.INTEGER)$. It is also worth noting that the incoming demand is assumed to always take on integer values.  
 + Including an indicator for maximum stock for specific product so as to ensure that fixed costs are included for a warehouse in consideration given our order. This is included with the *max_stock = max(warehouse_stock[w][k] for w in warehouses for k in products)* list in our variables in line 53. This fixed costs is activated for a warehouse in the order via the following constraint: *m.addConstr(fixed_cost_ind[(w,o)] >= sum(flow[(w, o, k)] for k in products if k in orders_data[o])/max_stock)* in line 82.  
 

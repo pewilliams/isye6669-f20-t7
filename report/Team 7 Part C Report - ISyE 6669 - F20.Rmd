@@ -40,10 +40,81 @@ suppressPackageStartupMessages(require(kableExtra))
 *For instance, suppose Region 1 has only one warehouse, say Warehouse 1. This warehouse holds 5 units of Product 1. Also suppose there is only one order coming from Region 1, say Order 1. Order 1 requires 7 units of Product 1. With the new regional constraints, we have to send 5 units of Product 1 from Warehouse 1 to Order 1. We can satisfy the remaining demand of 2 units form any warehouse. Notice that this constraint takes precedence over any cost considerations, i.e. we have to send 5 units from Warehouse 1 even if it is cheaper to satisfy the order from another warehouse.*  
 
 *Write the model for the updated problem. Explain any additional parameters, variables, and constraints you had to introduce. Your new formulation should include the changes you have made in Question 5. You don’t have to explain these again.*  
-  
+
+To start we have products, warehouses and orders with the addition of notation for regions:
+
+\begin{flalign}
+k  = 1,...,K \text{ Products,} \\
+j = 1,...,N  \text{ Warehouses, and}  \\
+i = 1,...,H  \text{ Orders} \\
+r = 1,…, R \text{ Regions}
+\end{flalign}
+
+The notation for regions is now required as we factor in the region assignments due to trade regulations.    
+
+We also define,    
+
+\begin{flalign}
+d_{ik} \text{ , the demand for product } k \text{ in order } i,  \\
+s_{jk} \text{ , stock of product } k \text{ in warehouse } j,  \\
+c_{ij} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
+w_k,  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} \\
+f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i. 
+\end{flalign}
+
+The inclusion of the regions calls for the following variable to be defined in addition to the previous five:  
+
+\begin{flalign}
+S_{kr} \text{ , stock of product } k \text{ in region } r, 
+\end{flalign}
+
+We also create sets that describe which region a warehouse belongs to as well as which order belongs to a region is,  
+
+\begin{flalign}
+N_{r} \text{ a warehouse belong to region } r, \\
+H_r \text{ an order belong to region} r
+\end{flalign}
+
+The formulation of the decision variables becomes,  
+
+\begin{flalign}
+x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
+\delta^{*}_{ik} = \text{ the number of units of product } k \text{ not fulfilled in order } i \\
+t_{rk} = \text{ is an indication of if there is stock out of product } k \text{ from region } r \\
+z_{rk} = \text{ regional flow of product } k \text{ in region } r
+z^{'}_{rk} = \text{ nonregional flow of product } k \text{ in region } r
+\end{flalign}
+
+Note that the variable $t$ allows us to factor when a region has stock out. The $z$ and $z^{'}$ variables help us track when a stock is staying within a region vs when it is making its way to destinations beyond the region. 
+
+The objective is to minimize the cost resulting in the following objective function:  
+
+\begin{align}
+\min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij}w_k + \sum^{H}_{i=1} \sum^{N}_{j=1} f_{ij} y_{ij} + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
+\end{align}  
+
+
+\newpage 
+
 ## Question 9 (10 pts)
 
 *Implement your new model in Xpress or Gurobi/Python. In your submission, this script should be named ModelC.mos or ModelC.py. As in Question 2, make sure you explain any new lines of code you have added.*
+
+The addition of the regions results in multiple new lines of code in ModelC.py:      
+
++ We must now read in the necessary data from WarehouseRegions.csv and Order Regions.csv into dataframes. This is done with the command *warehouse_regions_df = pd.read_csv('../csv/WarehouseRegions.csv')* and *order_regions_df = pd.read_csv('../csv/OrderRegions.csv')* respectively. The Warehouse regions *.csv* includes the data for each warehouse $j$ and their respective region $r$. The order regions matches and order $i$ to a region $r$.  
++ With the addition of the new dataframes we then have to turn them into dictionaries. The first of which is the warehouse regions using the command *warehouse_regions = {warehouse_regions_df.at[i, 'Warehouse ID']: warehouse_regions_df.at[i, 'Region'] for i in warehouse_regions_df.index}*.  
++ An important part of adding the regions is tracking the amount of stock of a product ion a specific region. We can accomplish this by using a command to track the amount of product k in region r. The command is as follow: *region_stock = {r: {k: sum([warehouse_stock[w][k] for w in warehouses if warehouse_regions[w]==r]) for k in products} for r in regions}*.  
++ Within the variables we must now factor in the regional demand and consider the maximum demands. This will ne used in the non regional flow constraint. To set this regional demand we used the command *regional_demand = {r: {k: sum(orders_data[o][k] for o in orders if k in orders_data[o]) for k in products} for r in regions}*.  
++ There are a number of variables needed to fully build out the necessary infrastructure for the inclusion of the regions. Firstly we introduce the region indices with $r$ for regions and $k$ for products with *region_indices = [(r, k) for r in regions for k in products]* . We then create a Binary variable for whether or not a region has stock out to keep track of when there are transregional orders; *region_stock_out = m.addVars(region_indices, vtype=GRB.BINARY)*. To keep track of the intra regional flow we must include a regional flow variable using *regional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*. And in conjunction with that we use the line of code, *nonregional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*, to track the non regional flow.   
++ Now for the lines of code added to account for the new constraints. In defining the regional flow we use the sum of a product sent to destinations within a region meaning the destination is in the same region as the warehouse. This is done by identifying when the “r” region is the same for both warehouse and the order and is implemented with the following command: *m.addConstr(regional_flow[(r,k)] == sum(flow[(w, o, k)] for w in warehouses if warehouse_regions[w]==r for o in orders if k in orders_data[o] and order_regions[o]==r))* A similar command was used to define the nonregional flow as when the $r$ region was not identical between the warehouse and the order using the difference of *if warehouse_regions[w] != r* in the code.  
++ With the stock out variable being binary we needed constraints to activate and deactivate. This was done by making sure that when the region stock was not great enough to satisfy the regional flow, the stock out would be triggered.  In our code this is reflected as *m.addConstr(region_stock[r][k] - regional_flow[(r,k)] >= 1 - region_stock_out[(r,k)])*. In addition to this, a constraint to guarantee that nonregional flow is only allowed when the stock out is active is as follows: *m.addConstr(regional_demand[r][k]\*region_stock_out[(r,k)] >= nonregional_flow[(r,k)])*.  
++ The final additions to the previous code include the solution print commands for region summary table and the regional statistics such as regional flow, stock out, and nonregional flow. *print('Region Summary Table')* and *print('Region,Product,Regional_stock,Region_stock_out,Regional_Flow,Nonregional_Flow')*. Additionally Warehouse region and order region are added into the outputs with adding *Warehouse_Region* and *Order_Region*.   
+
+
+
+
+ 
 
 ## Question 10 (5 pts)
 
