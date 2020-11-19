@@ -75,7 +75,7 @@ We can also add notation to our demand and stock variables to explicitly specify
 
 \begin{flalign}
 d_{ik} \in \mathbb{N} \text{ , the demand for product } k \text{ in order } i,  \\
-s_{jk} \in \mathbb{N} \text{ , stock of product } k \text{ in warehouse } j,  \\
+s_{jk} \in \mathbb{N} \text{ , stock of product } k \text{ in warehouse } j,  
 \end{flalign}  
 
 We also need to ensure we have properly accounted for all products for each warehouse and order:  
