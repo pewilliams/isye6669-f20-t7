@@ -71,13 +71,6 @@ This new objective would also be subject to the our key decision variable taking
 x_{ijk} \in \mathbb{N}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i.\
 \end{flalign}  
 
-We can also add notation to our demand and stock variables to explicitly specify they take on whole number values (integer) as follows:
-
-\begin{flalign}
-d_{ik} \in \mathbb{N} \text{ , the demand for product } k \text{ in order } i,  \\
-s_{jk} \in \mathbb{N} \text{ , stock of product } k \text{ in warehouse } j,  
-\end{flalign}  
-
 We also need to ensure we have properly accounted for all products for each warehouse and order:  
 
 \begin{flalign}
