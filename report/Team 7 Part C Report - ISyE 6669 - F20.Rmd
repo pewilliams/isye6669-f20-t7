@@ -41,16 +41,14 @@ suppressPackageStartupMessages(require(kableExtra))
 
 *Write the model for the updated problem. Explain any additional parameters, variables, and constraints you had to introduce. Your new formulation should include the changes you have made in Question 5. You don’t have to explain these again.*  
 
-To start we have products, warehouses and orders with the addition of notation for regions:
+To start we have products, warehouses and orders with the addition of notation for regions. Thisis required as we now need to factor in the region assignments due to trade regulations:  
 
 \begin{flalign}
 k  = 1,...,K \text{ Products,} \\
 j = 1,...,N  \text{ Warehouses, and}  \\
 i = 1,...,H  \text{ Orders} \\
-r = 1,…, R \text{ Regions}
+r = 1,...,R \text{ Regions} 
 \end{flalign}
-
-The notation for regions is now required as we factor in the region assignments due to trade regulations.    
 
 We also define,    
 
@@ -62,16 +60,16 @@ w_k,  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} \\
 f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i. 
 \end{flalign}
 
-The inclusion of the regions calls for the following variable to be defined in addition to the previous five:  
+The inclusion of the regions also means we need to account for stock of product in each region as well:    
 
 \begin{flalign}
-S_{kr} \text{ , stock of product } k \text{ in region } r, 
+S_{kr} \text{ stock of product } k \text{ in region } r
 \end{flalign}
 
-We also create sets that describe which region a warehouse belongs to as well as which order belongs to a region is,  
+We also create sets that describe which region a warehouse belongs to as well as the order region,   
 
 \begin{flalign}
-N_{r} \text{ a warehouse belong to region } r, \\
+N_{r} \text{ a warehouse belong to region } r \\
 H_r \text{ an order belong to region} r
 \end{flalign}
 
@@ -89,9 +87,9 @@ Note that the variable $t$ allows us to factor when a region has stock out. The 
 
 The objective is to minimize the cost resulting in the following objective function:  
 
-\begin{align}
+\begin{flalign}
 \min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij}w_k + \sum^{H}_{i=1} \sum^{N}_{j=1} f_{ij} y_{ij} + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
-\end{align}  
+\end{flalign}  
 
 
 \newpage 
@@ -102,27 +100,252 @@ The objective is to minimize the cost resulting in the following objective funct
 
 The addition of the regions results in multiple new lines of code in ModelC.py:      
 
-+ We must now read in the necessary data from WarehouseRegions.csv and Order Regions.csv into dataframes. This is done with the command *warehouse_regions_df = pd.read_csv('../csv/WarehouseRegions.csv')* and *order_regions_df = pd.read_csv('../csv/OrderRegions.csv')* respectively. The Warehouse regions *.csv* includes the data for each warehouse $j$ and their respective region $r$. The order regions matches and order $i$ to a region $r$.  
++ We must now read in the necessary data from WarehouseRegions.csv and Order Regions.csv into dataframes named *warehouse_regions_df* and *order_regions_df*. The Warehouse regions *.csv* includes the data for each warehouse $j$ and their respective region $r$. The order regions matches and order $i$ to a region $r$.  
 + With the addition of the new dataframes we then have to turn them into dictionaries. The first of which is the warehouse regions using the command *warehouse_regions = {warehouse_regions_df.at[i, 'Warehouse ID']: warehouse_regions_df.at[i, 'Region'] for i in warehouse_regions_df.index}*.  
 + An important part of adding the regions is tracking the amount of stock of a product ion a specific region. We can accomplish this by using a command to track the amount of product k in region r. The command is as follow: *region_stock = {r: {k: sum([warehouse_stock[w][k] for w in warehouses if warehouse_regions[w]==r]) for k in products} for r in regions}*.  
 + Within the variables we must now factor in the regional demand and consider the maximum demands. This will ne used in the non regional flow constraint. To set this regional demand we used the command *regional_demand = {r: {k: sum(orders_data[o][k] for o in orders if k in orders_data[o]) for k in products} for r in regions}*.  
 + There are a number of variables needed to fully build out the necessary infrastructure for the inclusion of the regions. Firstly we introduce the region indices with $r$ for regions and $k$ for products with *region_indices = [(r, k) for r in regions for k in products]* . We then create a Binary variable for whether or not a region has stock out to keep track of when there are transregional orders; *region_stock_out = m.addVars(region_indices, vtype=GRB.BINARY)*. To keep track of the intra regional flow we must include a regional flow variable using *regional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*. And in conjunction with that we use the line of code, *nonregional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*, to track the non regional flow.   
 + Now for the lines of code added to account for the new constraints. In defining the regional flow we use the sum of a product sent to destinations within a region meaning the destination is in the same region as the warehouse. This is done by identifying when the “r” region is the same for both warehouse and the order and is implemented with the following command: *m.addConstr(regional_flow[(r,k)] == sum(flow[(w, o, k)] for w in warehouses if warehouse_regions[w]==r for o in orders if k in orders_data[o] and order_regions[o]==r))* A similar command was used to define the nonregional flow as when the $r$ region was not identical between the warehouse and the order using the difference of *if warehouse_regions[w] != r* in the code.  
 + With the stock out variable being binary we needed constraints to activate and deactivate. This was done by making sure that when the region stock was not great enough to satisfy the regional flow, the stock out would be triggered.  In our code this is reflected as *m.addConstr(region_stock[r][k] - regional_flow[(r,k)] >= 1 - region_stock_out[(r,k)])*. In addition to this, a constraint to guarantee that nonregional flow is only allowed when the stock out is active is as follows: *m.addConstr(regional_demand[r][k]\*region_stock_out[(r,k)] >= nonregional_flow[(r,k)])*.  
-+ The final additions to the previous code include the solution print commands for region summary table and the regional statistics such as regional flow, stock out, and nonregional flow. *print('Region Summary Table')* and *print('Region,Product,Regional_stock,Region_stock_out,Regional_Flow,Nonregional_Flow')*. Additionally Warehouse region and order region are added into the outputs with adding *Warehouse_Region* and *Order_Region*.   
-
-
-
-
- 
++ The final additions to the previous code include the solution print commands for region summary table and the regional statistics such as regional flow, stock out, and nonregional flow.Additionally Warehouse region and order region are added into the outputs with adding *Warehouse_Region* and *Order_Region*.   
 
 ## Question 10 (5 pts)
 
 *Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 8? What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent? In your write up, summarize your solution in a human readable format, e.g. a table.*  
 
+With the inclusion of the complexity of regional areas our model provides the following solution. In this topline solution we provide the realized value from our objective function, as well as the total order costs, which are the sum of total fixed costs + unit costs. Our realized objective function value can also be understood as the product of *Unfulfilled Demand Quantity* $\times$ $M$ +  *Total Order Cost*:     
+
+\begin{table}[H]
+\centering 
+\caption{Model C: Topline Results (Rounded)}
+\begin{tabular}{ll}  
+\hline
+Model Result & Value  \\   
+\hline
+Objective Function Value & 173,416.66  \\
+Total Order Cost	& 13,416.66	\\
+Total Fixed Cost	& 4,324.00	 \\
+Total Unit Costs & 9,092.66 \\
+Penalty & M = 10,000 \\
+Unfulfilled Demand Quantity & 16 \\
+\hline
+\end{tabular} 
+\end{table} 
+
+With the results from our model we can quickly break-down the stock, stock-out, and regional and non-regional flows summarized below:  
+
+\begin{table}[H]
+\centering 
+\caption{Model C: Regional Summary}
+\begin{tabular}{lccccc}  
+\hline
+Region & Product & Regional Stock & Region Stock-Out & Regional Flow & Non-Regional Flow	\\  
+\hline
+1	&	1	&	0	&	1	&	0	&	13	\\
+1	&	2	&	0	&	1	&	0	&	9	\\
+1	&	3	&	0	&	1	&	0	&	16	\\
+1	&	4	&	0	&	1	&	0	&	8	\\
+1	&	5	&	0	&	1	&	0	&	9	\\
+2	&	1	&	13	&	0	&	9	&	0	\\
+2	&	2	&	10	&	1	&	10	&	15	\\
+2	&	3	&	15	&	0	&	10	&	0	\\
+2	&	4	&	15	&	0	&	14	&	0	\\
+2	&	5	&	14	&	1	&	14	&	4	\\
+3	&	1	&	6	&	1	&	6	&	14	\\
+3	&	2	&	5	&	1	&	5	&	11	\\
+3	&	3	&	10	&	1	&	10	&	6	\\
+3	&	4	&	10	&	0	&	6	&	0	\\
+3	&	5	&	7	&	1	&	7	&	13	\\
+4	&	1	&	35	&	0	&	12	&	0	\\
+4	&	2	&	44	&	0	&	7	&	0	\\
+4	&	3	&	37	&	0	&	20	&	0	\\
+4	&	4	&	37	&	0	&	20	&	0	\\
+4	&	5	&	39	&	0	&	13	&	0	\\
+\hline
+\end{tabular} 
+\end{table} 
 
 \newpage 
 
-# Appendix
+Similar to our solution in part B, we can also retrieve the unfulfilled demand by product and order as shown below. The total unfulfilled demand was 16:   
 
+\begin{table}[H]
+\centering 
+\caption{Model C: Unfulfilled Demand Summary}
+\begin{tabular}{ccc}  
+\hline
+Order	& Product & Unfulfilled Demand	\\   
+\hline
+9	& 5	&	2	\\
+12		&	5		&	2	\\
+17		&	5		&	1	\\
+26		&	1		&	3	\\
+28		&	3		&	5	\\
+30		&	1		&	2	\\
+43		&	5		&	1	\\
+\hline
+\end{tabular} 
+\end{table} 
 
+We can also get insights on the leftover supply in each warehouse for each product as shown below:    
+
+\begin{table}[H]
+\centering 
+\caption{Model C: Leftover Stock Results}
+\begin{tabular}{ccc}  
+\hline
+Warehouse & Product & Leftover Supply	\\   
+\hline
+1		&	4		&	1	\\
+2		&	4		&	2	\\
+3		&	4		&	4	\\
+6		&	2		&	1	\\
+7		&	4		&	7	\\
+8		&	2		&	1	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+Finally we provide the complete solution to the problem, which is shown in the appendix following. This solution contains for each warehouse and region, the order, its region along with the quantity and associated unit costs to fulfill. 
+
+\newpage
+
+#Appendix  
+
+The complete solution to problem C is provided below in three parts in order to fit in this document in a readable way:    
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem C: Minimizing Order Fulfillment Costs  (1/3)}
+\begin{tabular}{lcccccl}  
+\hline
+Warehouse	& Warehouse Region	& Order	& Order Region & Product & Quantity	& Unit Costs \\   
+\hline
+1	&	2	&	9	&	1	&	1	&	4	&	54.02	\\
+1	&	2	&	9	&	1	&	3	&	1	&	27.01	\\
+1	&	2	&	25	&	2	&	3	&	3	&	224.13	\\
+1	&	2	&	25	&	2	&	5	&	2	&	112.07	\\
+1	&	2	&	26	&	2	&	4	&	5	&	190.92	\\
+1	&	2	&	26	&	2	&	5	&	3	&	343.65	\\
+1	&	2	&	30	&	2	&	1	&	1	&	16.04	\\
+1	&	2	&	30	&	2	&	2	&	2	&	64.15	\\
+1	&	2	&	31	&	3	&	3	&	1	&	45.1	\\
+1	&	2	&	39	&	2	&	2	&	3	&	121.16	\\
+1	&	2	&	39	&	2	&	5	&	4	&	121.16	\\
+2	&	3	&	10	&	3	&	2	&	1	&	27.27	\\
+2	&	3	&	10	&	3	&	3	&	8	&	218.16	\\
+2	&	3	&	10	&	3	&	4	&	1	&	6.82	\\
+2	&	3	&	21	&	3	&	1	&	2	&	65.47	\\
+2	&	3	&	21	&	3	&	4	&	1	&	16.37	\\
+2	&	3	&	23	&	3	&	3	&	1	&	24.33	\\
+2	&	3	&	23	&	3	&	5	&	4	&	72.99	\\
+2	&	3	&	31	&	3	&	1	&	1	&	62.88	\\
+2	&	3	&	31	&	3	&	3	&	1	&	125.76	\\
+2	&	3	&	31	&	3	&	5	&	3	&	282.97	\\
+2	&	3	&	36	&	3	&	2	&	2	&	274.88	\\
+2	&	3	&	36	&	3	&	4	&	4	&	137.44	\\
+2	&	3	&	40	&	3	&	1	&	3	&	114.96	\\
+2	&	3	&	40	&	3	&	2	&	2	&	153.27	\\
+2	&	3	&	42	&	1	&	4	&	2	&	20.94	\\
+3	&	4	&	1	&	3	&	2	&	5	&	240.36	\\
+3	&	4	&	3	&	2	&	2	&	3	&	64.68	\\
+3	&	4	&	12	&	1	&	1	&	3	&	183.05	\\
+3	&	4	&	17	&	4	&	1	&	1	&	37.5	\\
+3	&	4	&	17	&	4	&	4	&	3	&	56.25	\\
+3	&	4	&	17	&	4	&	5	&	5	&	281.27	\\
+3	&	4	&	18	&	3	&	1	&	3	&	68.98	\\
+3	&	4	&	18	&	3	&	5	&	1	&	34.49	\\
+3	&	4	&	22	&	4	&	3	&	1	&	77.94	\\
+3	&	4	&	32	&	4	&	1	&	2	&	10.74	\\
+3	&	4	&	32	&	4	&	3	&	3	&	32.23	\\
+3	&	4	&	37	&	3	&	3	&	2	&	29.98	\\
+3	&	4	&	37	&	3	&	5	&	4	&	44.97	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem C: Minimizing Order Fulfillment Costs  (2/3)}
+\begin{tabular}{lcccccl}  
+\hline
+Warehouse	& Warehouse Region	& Order	& Order Region & Product & Quantity	& Unit Costs \\ 
+\hline
+4	&	2	&	2	&	2	&	3	&	4	&	72.13	\\
+4	&	2	&	2	&	2	&	4	&	1	&	4.51	\\
+4	&	2	&	3	&	2	&	3	&	2	&	144.1	\\
+4	&	2	&	3	&	2	&	5	&	2	&	108.07	\\
+4	&	2	&	7	&	2	&	2	&	5	&	133.24	\\
+4	&	2	&	19	&	2	&	4	&	3	&	91.21	\\
+4	&	2	&	27	&	2	&	1	&	4	&	3.96	\\
+4	&	2	&	27	&	2	&	5	&	3	&	4.45	\\
+4	&	2	&	29	&	2	&	4	&	4	&	91.51	\\
+4	&	2	&	35	&	2	&	1	&	3	&	100.06	\\
+4	&	2	&	41	&	1	&	3	&	3	&	52.97	\\
+4	&	2	&	45	&	2	&	1	&	1	&	32.5	\\
+4	&	2	&	45	&	2	&	3	&	1	&	65	\\
+4	&	2	&	45	&	2	&	4	&	1	&	16.25	\\
+5	&	4	&	5	&	1	&	3	&	1	&	54.33	\\
+5	&	4	&	5	&	1	&	5	&	2	&	81.49	\\
+5	&	4	&	24	&	1	&	1	&	2	&	7.81	\\
+5	&	4	&	31	&	3	&	1	&	2	&	113.23	\\
+5	&	4	&	31	&	3	&	3	&	1	&	113.23	\\
+5	&	4	&	36	&	3	&	1	&	5	&	39.38	\\
+5	&	4	&	36	&	3	&	2	&	2	&	31.51	\\
+5	&	4	&	38	&	4	&	2	&	4	&	24.74	\\
+5	&	4	&	38	&	4	&	4	&	5	&	7.73	\\
+5	&	4	&	43	&	4	&	4	&	2	&	36.77	\\
+5	&	4	&	43	&	4	&	5	&	3	&	165.46	\\
+5	&	4	&	44	&	1	&	2	&	4	&	115.52	\\
+5	&	4	&	44	&	1	&	3	&	4	&	115.52	\\
+5	&	4	&	44	&	1	&	5	&	2	&	43.32	\\
+6	&	4	&	4	&	4	&	1	&	2	&	51.02	\\
+6	&	4	&	4	&	4	&	3	&	2	&	102.03	\\
+6	&	4	&	14	&	4	&	1	&	3	&	88.96	\\
+6	&	4	&	14	&	4	&	4	&	4	&	59.31	\\
+6	&	4	&	15	&	3	&	3	&	1	&	5.43	\\
+6	&	4	&	17	&	4	&	3	&	4	&	62.29	\\
+6	&	4	&	17	&	4	&	5	&	1	&	11.68	\\
+6	&	4	&	25	&	2	&	2	&	2	&	26.45	\\
+6	&	4	&	30	&	2	&	2	&	2	&	120.6	\\
+6	&	4	&	34	&	3	&	2	&	3	&	1.28	\\
+6	&	4	&	34	&	3	&	3	&	1	&	0.43	\\
+6	&	4	&	34	&	3	&	5	&	4	&	1.28	\\
+6	&	4	&	43	&	4	&	2	&	2	&	102.61	\\
+6	&	4	&	43	&	4	&	3	&	2	&	102.61	\\
+6	&	4	&	43	&	4	&	4	&	2	&	25.65	\\
+7	&	4	&	8	&	3	&	2	&	1	&	20.93	\\
+7	&	4	&	8	&	3	&	5	&	1	&	15.69	\\
+7	&	4	&	11	&	2	&	2	&	4	&	266.79	\\
+7	&	4	&	12	&	1	&	5	&	1	&	41.32	\\
+7	&	4	&	15	&	3	&	5	&	3	&	30.78	\\
+7	&	4	&	20	&	4	&	1	&	4	&	99.51	\\
+7	&	4	&	20	&	4	&	3	&	3	&	149.27	\\
+7	&	4	&	24	&	1	&	2	&	5	&	265.56	\\
+7	&	4	&	41	&	1	&	1	&	1	&	17.88	\\
+7	&	4	&	41	&	1	&	3	&	4	&	143.06	\\
+7	&	4	&	41	&	1	&	5	&	4	&	107.29	\\
+\hline
+\end{tabular} 
+\end{table} 
+
+\begin{table}[H]
+\centering 
+\caption{Full Solution Problem C: Minimizing Order Fulfillment Costs  (3/3)}
+\begin{tabular}{lcccccl}  
+\hline
+Warehouse	& Warehouse Region	& Order	& Order Region & Product & Quantity	& Unit Costs \\ 
+8	&	4	&	6	&	2	&	5	&	3	&	2.39	\\
+8	&	4	&	13	&	4	&	5	&	4	&	96.15	\\
+8	&	4	&	16	&	4	&	2	&	1	&	89.07	\\
+8	&	4	&	16	&	4	&	4	&	4	&	89.07	\\
+8	&	4	&	22	&	4	&	3	&	5	&	368.89	\\
+8	&	4	&	23	&	3	&	1	&	4	&	1.27	\\
+8	&	4	&	29	&	2	&	5	&	1	&	3.11	\\
+8	&	4	&	33	&	1	&	3	&	3	&	101.26	\\
+8	&	4	&	33	&	1	&	4	&	6	&	50.63	\\
+8	&	4	&	41	&	1	&	1	&	3	&	173.14	\\
+8	&	4	&	45	&	2	&	2	&	4	&	241.6	\\
+\hline
+\end{tabular} 
+\end{table} 
