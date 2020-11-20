@@ -61,7 +61,7 @@ f_{ij} \text{ , the fixed cost of sending a product from warehouse } j \text{ to
 The inclusion of the regions also means we need to account for stock of product in each region as well:
 
 \begin{flalign}
-s_{kr} \text{ stock of product } k \text{ in region } r
+S_{kr} \text{ stock of product } k \text{ in region } r
 \end{flalign}
 
 \newpage 
@@ -99,10 +99,10 @@ subject to,
 \sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in H, k \in K, \\
 \sum^{H}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
 z_{rk} = \sum^{N_r}_{j=1} \sum^{H_r}_{i=1} x_{ijk} \forall r \forall k \\
-z^{'}_{rk}  = \sum^{N_{r*}}_{j=1} \sum^{H_r}_{i=1} x_{ijk} \forall r \\
+z^{'}_{rk}  = \sum^{N_{r*}}_{j=1} \sum^{H_r}_{i=1} x_{ijk} \forall r \forall k \\
 M y_{ij} \geq \sum_k x_{ijk} \forall j \in N, \forall i \in H \\
-1 - t_{rk} \leq s_{kr} - z_{rk} \forall k, \forall r \\
-s_{kr}t_{rk} \leq z_{rk} \forall k, \forall r \\ 
+1 - t_{rk} \leq S_{kr} - z_{rk} \forall k, \forall r \\
+S_{kr}t_{rk} \leq z_{rk} \forall k, \forall r \\ 
 M t_{rk} \geq z^{'}_{rk} \forall k, \forall r 
 \end{flalign}  
 
@@ -112,7 +112,7 @@ and,
 
 \begin{flalign}
 M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}  \\
-x_{ijk}, d_{ik}, s_{jk} \in \mathbb{N}\ \\
+x_{ijk} \in \mathbb{N}\ \\
 x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\ 
 \delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  
 \end{flalign}  
