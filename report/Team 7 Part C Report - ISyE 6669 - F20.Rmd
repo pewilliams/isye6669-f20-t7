@@ -7,6 +7,8 @@ output:
   pdf_document:
     fig_caption: yes
     number_sections: no
+  html_document:
+    df_print: paged
   word_document: default
 header-includes:
 - \usepackage{titling}
@@ -17,7 +19,7 @@ header-includes:
 - \predate{\begin{flushleft}}
 - \postdate{\end{flushleft}}
 - \usepackage{float}
-- \usepackage{caption} 
+- \usepackage{caption}
 - \usepackage{amsmath}
 - \captionsetup[table]{skip=8pt}
 fontsize: 10pt
@@ -35,13 +37,9 @@ suppressPackageStartupMessages(require(kableExtra))
 
 ## Question 8 (15 pts)  
 
-*Often businesses have to take into account considerations beyond just the cost. In our case, due to trade regulations, our warehouses and customer orders have been assigned to one of four different regions. These assignments are given in WarehouseRegions.csv and OrderRegions.csv. Orders from one region should be fulfilled by warehouses from the same region until the supplies are depleted. After that, they can be fulfilled from any region.*  
+*Often businesses have to take into account considerations beyond just the cost. In our case, due to trade regulations, our warehouses and customer orders have been assigned to one of four different regions. These assignments are given in WarehouseRegions.csv and OrderRegions.csv. Orders from one region should be fulfilled by warehouses from the same region until the supplies are depleted. After that, they can be fulfilled from any region. Write the model for the updated problem. Explain any additional parameters, variables, and constraints you had to introduce.*  
 
-*For instance, suppose Region 1 has only one warehouse, say Warehouse 1. This warehouse holds 5 units of Product 1. Also suppose there is only one order coming from Region 1, say Order 1. Order 1 requires 7 units of Product 1. With the new regional constraints, we have to send 5 units of Product 1 from Warehouse 1 to Order 1. We can satisfy the remaining demand of 2 units form any warehouse. Notice that this constraint takes precedence over any cost considerations, i.e. we have to send 5 units from Warehouse 1 even if it is cheaper to satisfy the order from another warehouse.*  
-
-*Write the model for the updated problem. Explain any additional parameters, variables, and constraints you had to introduce. Your new formulation should include the changes you have made in Question 5. You don’t have to explain these again.*  
-
-To start we have products, warehouses and orders with the addition of notation for regions. Thisis required as we now need to factor in the region assignments due to trade regulations:  
+To start we have products, warehouses and orders with the addition of notation for regions. Thisis required as we now need to factor in the region assignments due to trade regulations:
 
 \begin{flalign}
 k  = 1,...,K \text{ Products,} \\
@@ -50,27 +48,30 @@ i = 1,...,H  \text{ Orders} \\
 r = 1,...,R \text{ Regions} 
 \end{flalign}
 
-We also define,    
+We also define,
 
 \begin{flalign}
 d_{ik} \text{ , the demand for product } k \text{ in order } i,  \\
 s_{jk} \text{ , stock of product } k \text{ in warehouse } j,  \\
 c_{ij} \text{ , cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i, \\
 w_k,  (k = 1,...,K) \text{ denotes the weight of product k in lbs.} \\
-f_{ij} \text{ , the fixed cost of sending 1 lbs. of product from warehouse } j \text{ to customer } i. 
+f_{ij} \text{ , the fixed cost of sending a product from warehouse } j \text{ to customer } i. 
 \end{flalign}
 
-The inclusion of the regions also means we need to account for stock of product in each region as well:    
+The inclusion of the regions also means we need to account for stock of product in each region as well:
 
 \begin{flalign}
-S_{kr} \text{ stock of product } k \text{ in region } r
+s_{kr} \text{ stock of product } k \text{ in region } r
 \end{flalign}
 
-We also create sets that describe which region a warehouse belongs to as well as the order region,   
+\newpage 
+
+We also create sets that describe which region a warehouse belongs to as well as the order region,
 
 \begin{flalign}
-N_{r} \text{ a warehouse belong to region } r \\
-H_r \text{ an order belong to region } r
+N_{r} \text{ the set of warehouses in region } r \\
+N_{r*} \text{ the set of warehouses not in region } r \\
+H_r \text{ the set of orders in region } r
 \end{flalign}
 
 The formulation of the decision variables becomes,  
@@ -79,37 +80,47 @@ The formulation of the decision variables becomes,
 x_{ijk}, \text{ number of units shipped of product } k \text{ from warehouse } j \text{ to customer } i, \text{ and}  \\
 \delta^{*}_{ik} = \text{ the number of units of product } k \text{ not fulfilled in order } i \\
 t_{rk} \in \{0,1\} \text{ is an indication of if there is stock-out of product } k \text{ from region } r,  1, \text{ if stock-out, 0 o.w}\\
-z_{rk} = \text{ regional flow of product } k \text{ in region } r
+z_{rk} = \text{ regional flow of product } k \text{ in region } r \\
 z^{'}_{rk} = \text{ nonregional flow of product } k \text{ in region } r
 \end{flalign}
 
 Note that the variable $t$ allows us to factor when a region has stock out. The $z$ and $z^{'}$ variables help us track when a stock is staying within a region vs when it is making its way to destinations beyond the region. 
 
-The objective is to minimize the cost resulting in the following objective function:  
+Our goal is to minimize the cost with this additional complexity resulting in the following objective function:
 
 \begin{flalign}
 \min z =  \sum^{H}_{i=1} \sum^{N}_{j=1} \sum^{K}_{k=1} x_{ijk} c_{ij}w_k + \sum^{H}_{i=1} \sum^{N}_{j=1} f_{ij} y_{ij} + M \sum^{H}_{i=1} \sum^{K}_{k=1} \delta^{*}_{ik}.
 \end{flalign}  
 
-subject to,  
+
+subject to,
 
 \begin{flalign}
 \sum^{N}_{j=1} x_{ijk} + \delta^{*}_{ik} = d_{ik},  \forall i \in H, k \in K, \\
 \sum^{H}_{i=1} x_{ijk} \leq s_{jk}, \forall j \in N, k \in K \\
-z_{rk} = \sum^{N}_{j=1} \sum^{H}_{i=1} x_{ijk} \forall r \forall k \text{ if warehouse j in region r and order i in r  }\\
-z^{'}_{rk}  = \sum^{N}_{j=1} \sum^{H}_{i=1} x_{ijk} \forall r \forall k \text{ if warehouse j not in region r and order i in r   }\\
-M y_{ij} \geq \sum_k x_{ijk} \forall j \in N, \forall i \in H. 
+z_{rk} = \sum^{N_r}_{j=1} \sum^{H_r}_{i=1} x_{ijk} \forall r \forall k \\
+z^{'}_{rk}  = \sum^{N_{r*}}_{j=1} \sum^{H_r}_{i=1} x_{ijk} \forall r \\
+M y_{ij} \geq \sum_k x_{ijk} \forall j \in N, \forall i \in H \\
+1 - t_{rk} \leq s_{kr} - z_{rk} \forall k, \forall r \\
+s_{kr}t_{rk} \leq z_{rk} \forall k, \forall r \\ 
+M t_{rk} \geq z^{'}_{rk} \forall k, \forall r 
 \end{flalign}  
+
+and,
+
+\newpage 
 
 \begin{flalign}
 M > 0, \text{ arbitrary large positive number (i.e. 'Big M').}  \\
-x_{ijk}, d_{ik}, s_{jk} \in \mathbb{N}\
+x_{ijk}, d_{ik}, s_{jk} \in \mathbb{N}\ \\
 x_{ijk} \geq 0 \forall i \in H, j \in N, k \in K \\ 
-\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  \\
+\delta^{*}_{ik} \geq 0 \ \forall i \in H, k \in K  
 \end{flalign}  
 
+Several constraints that are new to this model require additional explanation. Constraint (22) accounts for the regional flow, defined as product sent from a warehouse in region $r$ to an order in region $r$, while the non regional flow is product sent to an order in region $r$ from a warehouse outside of region $r$ is accounted for in constraint (23).  
 
-\newpage 
+Constraint (25) ensures that when there is a regional stock out for region $r$ and product $k$, that $t_{rk}$ is assigned the value 1, while constraints (26) ensures that $t_{rk}$ is 0 when there is not a regional stock out for region $r$ and product $k$. Finally, constraint (27) ensures that non-regional flow for region $r$ and product $k$ is $0$ until there is a stockout for that product in that region. 
+
 
 ## Question 9 (10 pts)
 
@@ -123,15 +134,15 @@ The addition of the regions results in multiple new lines of code in ModelC.py:
 + Within the variables we must now factor in the regional demand and consider the maximum demands. This will ne used in the non regional flow constraint. To set this regional demand we used the command *regional_demand = {r: {k: sum(orders_data[o][k] for o in orders if k in orders_data[o]) for k in products} for r in regions}*.  
 + There are a number of variables needed to fully build out the necessary infrastructure for the inclusion of the regions. Firstly we introduce the region indices with $r$ for regions and $k$ for products with *region_indices = [(r, k) for r in regions for k in products]* . We then create a Binary variable for whether or not a region has stock out to keep track of when there are transregional orders; *region_stock_out = m.addVars(region_indices, vtype=GRB.BINARY)*. To keep track of the intra regional flow we must include a regional flow variable using *regional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*. And in conjunction with that we use the line of code, *nonregional_flow = m.addVars(region_indices, lb=0, vtype=GRB.CONTINUOUS)*, to track the non regional flow.   
 + Now for the lines of code added to account for the new constraints. In defining the regional flow we use the sum of a product sent to destinations within a region meaning the destination is in the same region as the warehouse. This is done by identifying when the “r” region is the same for both warehouse and the order and is implemented with the following command: *m.addConstr(regional_flow[(r,k)] == sum(flow[(w, o, k)] for w in warehouses if warehouse_regions[w]==r for o in orders if k in orders_data[o] and order_regions[o]==r))* A similar command was used to define the nonregional flow as when the $r$ region was not identical between the warehouse and the order using the difference of *if warehouse_regions[w] != r* in the code.  
-+ With the stock out variable being binary we needed constraints to activate and deactivate. This was done by making sure that when the region stock was not great enough to satisfy the regional flow, the stock out would be triggered.  In our code this is reflected as *m.addConstr(region_stock[r][k] - regional_flow[(r,k)] >= 1 - region_stock_out[(r,k)])*. In addition to this, a constraint to guarantee that nonregional flow is only allowed when the stock out is active is as follows: *m.addConstr(regional_demand[r][k]\*region_stock_out[(r,k)] >= nonregional_flow[(r,k)])*.  
-+ The final additions to the previous code include the solution print commands for region summary table and the regional statistics such as regional flow, stock out, and nonregional flow.Additionally Warehouse region and order region are added into the outputs with adding *Warehouse_Region* and *Order_Region*.   
++ With the stock out variable being binary we needed constraints to activate and deactivate. This was done by making sure that when the region stock was not great enough to satisfy the regional flow, the stock out would be triggered. In our code this is reflected as *m.addConstr(region_stock[r][k] - regional_flow[(r,k)] >= 1 - region_stock_out[(r,k)])* and  *m.addConstr(region_stock[r][k]\*region_stock_out[(r, k)] <= regional_flow[(r,k)])*. In addition to this, a constraint to guarantee that nonregional flow is only allowed when the stock out is active is as follows: *m.addConstr(regional_demand[r][k]\*region_stock_out[(r,k)] >= nonregional_flow[(r,k)])*.  
+
++ The final additions to the previous code include solution print commands for the region summary table and the regional statistics such as regional flow, stock out, and non-regional flow. Additionally warehouse region and order region are added into the outputs with adding *Warehouse_Region* and *Order_Region*.   
 
 ## Question 10 (5 pts)
 
-*Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 8? What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent? In your write up, summarize your solution in a human readable format, e.g. a table.*  
+*Solve your model. What is the objective value of your solution? What does it mean in words? How does it compare to the solution of Question 8? What is the optimal solution? Which orders are satisfied from which warehouse? What quantities of different items have been sent?*  
 
-With the inclusion of the complexity of regional areas our model provides the following solution. In this topline solution we provide the realized value from our objective function, as well as the total order costs, which are the sum of total fixed costs + unit costs. Our realized objective function value can also be understood as the product of *Unfulfilled Demand Quantity* $\times$ $M$ +  *Total Order Cost*:     
-
+With the inclusion of the complexity of regional areas our model provides the following solution. In this topline solution we provide the realized value from our objective function, as well as the total order costs, which are the sum of total fixed costs + unit costs. Our realized objective function value can also be understood as the product of *Unfulfilled Demand Quantity* $\times$ $M$ +  *Total Order Cost*:
 \begin{table}[H]
 \centering 
 \caption{Model C: Topline Results (Rounded)}
@@ -149,8 +160,7 @@ Unfulfilled Demand Quantity & 16 \\
 \end{tabular} 
 \end{table} 
 
-With the results from our model we can quickly break-down the stock, stock-out, and regional and non-regional flows summarized below:  
-
+With the results from our model we can quickly break-down the stock, stock-out, and regional and non-regional flows summarized below:
 \begin{table}[H]
 \centering 
 \caption{Model C: Regional Summary}
@@ -182,9 +192,7 @@ Region & Product & Regional Stock & Region Stock-Out & Regional Flow & Non-Regio
 \end{tabular} 
 \end{table} 
 
-\newpage 
-
-Similar to our solution in part B, we can also retrieve the unfulfilled demand by product and order as shown below. The total unfulfilled demand was 16:   
+Similar to our solution in part B, we can also retrieve the unfulfilled demand by product and order as shown below. The total unfulfilled demand was 16:
 
 \begin{table}[H]
 \centering 
@@ -204,7 +212,7 @@ Order	& Product & Unfulfilled Demand	\\
 \end{tabular} 
 \end{table} 
 
-We can also get insights on the leftover supply in each warehouse for each product as shown below:    
+We can also get insights on the leftover supply in each warehouse for each product as shown below:
 
 \begin{table}[H]
 \centering 
